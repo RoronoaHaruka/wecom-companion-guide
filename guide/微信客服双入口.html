@@ -1,0 +1,816 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Roronoa & Haruka · Documentation licensed CC BY-NC-SA 4.0 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双口接线</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f3f8fb;
+  --surface: #fbfdff;
+  --surface-2: #eaf2f7;
+  --ink: #13243a;
+  --ink-soft: #52677d;
+  --muted: #74879a;
+  --line: #cad9e4;
+  --line-strong: #9db4c4;
+  --cyan: #00aabc;
+  --cyan-deep: #007987;
+  --cyan-wash: #d9f5f6;
+  --coral: #ef675c;
+  --coral-deep: #b9443d;
+  --coral-wash: #ffe4df;
+  --code-bg: #101d2b;
+  --code-ink: #d8e9f1;
+  --code-muted: #7893a5;
+  --success: #248a70;
+  --warning: #bd633f;
+  --shadow: 0 18px 60px rgba(19, 36, 58, .10);
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09131e;
+    --surface: #0e1b29;
+    --surface-2: #142637;
+    --ink: #e8f3f8;
+    --ink-soft: #a8bdca;
+    --muted: #7f98a8;
+    --line: #294052;
+    --line-strong: #426276;
+    --cyan: #42d4df;
+    --cyan-deep: #79e5ec;
+    --cyan-wash: #12363e;
+    --coral: #ff8177;
+    --coral-deep: #ffaaa3;
+    --coral-wash: #412825;
+    --code-bg: #06101a;
+    --code-ink: #d8e9f1;
+    --code-muted: #7893a5;
+    --success: #64c3a7;
+    --warning: #ef9b78;
+    --shadow: 0 24px 80px rgba(0, 0, 0, .28);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #09131e;
+  --surface: #0e1b29;
+  --surface-2: #142637;
+  --ink: #e8f3f8;
+  --ink-soft: #a8bdca;
+  --muted: #7f98a8;
+  --line: #294052;
+  --line-strong: #426276;
+  --cyan: #42d4df;
+  --cyan-deep: #79e5ec;
+  --cyan-wash: #12363e;
+  --coral: #ff8177;
+  --coral-deep: #ffaaa3;
+  --coral-wash: #412825;
+  --code-bg: #06101a;
+  --code-ink: #d8e9f1;
+  --code-muted: #7893a5;
+  --success: #64c3a7;
+  --warning: #ef9b78;
+  --shadow: 0 24px 80px rgba(0, 0, 0, .28);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+a { color: var(--cyan-deep); text-underline-offset: .22em; }
+a:hover { color: var(--coral-deep); }
+button, input { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--cyan) 48%, transparent);
+  outline-offset: 3px;
+}
+::selection { background: var(--cyan-wash); color: var(--ink); }
+.progress {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: var(--read-progress, 0%);
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--coral));
+  z-index: 20;
+}
+.shell {
+  width: min(1320px, calc(100% - 40px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: clamp(36px, 6vw, 92px);
+}
+.side {
+  position: sticky;
+  top: 26px;
+  align-self: start;
+  height: calc(100vh - 52px);
+  padding: 26px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.brand {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  position: relative;
+}
+.brand-mark::before,
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  width: 28px;
+  height: 9px;
+  border: 2px solid var(--line-strong);
+  border-radius: 99px;
+}
+.brand-mark::before { top: 4px; border-color: var(--cyan); }
+.brand-mark::after { bottom: 4px; border-color: var(--coral); }
+.brand-mark span {
+  position: absolute;
+  width: 2px;
+  height: 16px;
+  background: var(--ink);
+  left: 16px;
+  top: 9px;
+}
+.brand strong { font-size: 14px; letter-spacing: .08em; }
+.brand small { display: block; color: var(--muted); font: 11px/1.4 var(--mono); margin-top: 2px; }
+.nav {
+  display: grid;
+  gap: 5px;
+  margin-top: 50px;
+}
+.nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-left: 2px solid transparent;
+}
+.nav a:hover, .nav a.active { color: var(--ink); border-left-color: var(--cyan); background: linear-gradient(90deg, var(--cyan-wash), transparent 80%); }
+.side-note { color: var(--muted); font: 11px/1.7 var(--mono); padding-right: 18px; }
+.main { min-width: 0; padding: 34px 0 100px; }
+.hero {
+  min-height: 610px;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(400px, 1.1fr);
+  align-items: center;
+  gap: clamp(30px, 5vw, 80px);
+  border-bottom: 1px solid var(--line);
+  padding: 50px 0 70px;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--cyan-deep);
+  font: 600 11px/1 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--cyan); }
+h1 {
+  font: 900 clamp(50px, 7vw, 92px)/1.02 var(--serif);
+  letter-spacing: -.055em;
+  margin: 22px 0 24px;
+  text-wrap: balance;
+}
+.hero-lede {
+  max-width: 38em;
+  color: var(--ink-soft);
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.9;
+}
+.hero-lede strong { color: var(--ink); }
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-top: 34px;
+  color: var(--muted);
+  font: 12px/1.5 var(--mono);
+}
+.hero-meta span::before { content: "// "; color: var(--coral); }
+.route-stage {
+  position: relative;
+  min-height: 450px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    repeating-linear-gradient(90deg, transparent 0 27px, color-mix(in srgb, var(--line) 45%, transparent) 28px) border-box;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  overflow: hidden;
+}
+.route-stage::after {
+  content: "LIVE ROUTE";
+  position: absolute;
+  right: 20px;
+  top: 16px;
+  color: var(--muted);
+  font: 10px/1 var(--mono);
+  letter-spacing: .12em;
+}
+.trace {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 54px 1.12fr 54px 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 18px 0;
+  align-items: center;
+  padding-top: 22px;
+}
+.node {
+  position: relative;
+  background: var(--surface-2);
+  border-top: 3px solid var(--line-strong);
+  padding: 18px 16px;
+  min-height: 98px;
+}
+.node.input-kf { grid-column: 1; grid-row: 1; border-color: var(--cyan); }
+.node.input-app { grid-column: 1; grid-row: 2; border-color: var(--coral); }
+.node.core {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  min-height: 205px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
+.node.output-kf { grid-column: 5; grid-row: 1; border-color: var(--cyan); }
+.node.output-app { grid-column: 5; grid-row: 2; border-color: var(--coral); }
+.wire.in-one { grid-column: 2; grid-row: 1; }
+.wire.in-two { grid-column: 2; grid-row: 2; }
+.wire.out-one { grid-column: 4; grid-row: 1; }
+.wire.out-two { grid-column: 4; grid-row: 2; }
+.node small { display: block; color: var(--muted); font: 10px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.node.core small { color: color-mix(in srgb, var(--surface) 58%, transparent); }
+.node b { display: block; margin-top: 9px; font-size: 15px; line-height: 1.45; }
+.node code { display: block; color: var(--ink-soft); font: 10px/1.5 var(--mono); margin-top: 7px; white-space: nowrap; }
+.node.core code { color: var(--cyan); }
+.wire { height: 2px; background: var(--line-strong); position: relative; }
+.wire.cyan { background: var(--cyan); color: var(--cyan); }
+.wire.coral { background: var(--coral); color: var(--coral); }
+.wire::after { content: ""; position: absolute; right: -2px; top: -4px; width: 8px; height: 8px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
+.packet { position: absolute; width: 9px; height: 9px; border: 2px solid currentColor; background: var(--surface); border-radius: 50%; top: -4px; left: 0; animation: packet 2.8s ease-in-out infinite; }
+@keyframes packet { 0%, 12% { left: 0; } 78%, 100% { left: calc(100% - 8px); } }
+.thesis {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+}
+.thesis-item { padding: 30px 28px 34px 0; border-right: 1px solid var(--line); }
+.thesis-item + .thesis-item { padding-left: 28px; }
+.thesis-item:last-child { border-right: 0; }
+.thesis strong { font: 700 16px/1.5 var(--serif); }
+.thesis p { color: var(--ink-soft); font-size: 13px; margin: 10px 0 0; }
+.section { padding: 82px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 20px; }
+.section-head {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 34px;
+  margin-bottom: 42px;
+}
+.kicker { color: var(--coral-deep); font: 600 11px/1.4 var(--mono); letter-spacing: .11em; text-transform: uppercase; padding-top: 10px; }
+h2 { font: 800 clamp(30px, 4vw, 52px)/1.2 var(--serif); letter-spacing: -.035em; margin: 0; text-wrap: balance; }
+.section-intro { max-width: 45em; color: var(--ink-soft); font-size: 16px; margin: 18px 0 0; }
+h3 { font: 700 22px/1.4 var(--serif); margin: 0; }
+p { margin: 0; }
+.callout {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 20px;
+  margin: 30px 0;
+  padding: 22px 0;
+  border-block: 1px solid var(--line);
+}
+.callout::before { content: ""; background: linear-gradient(var(--cyan) 0 50%, var(--coral) 50% 100%); }
+.callout b { display: block; margin-bottom: 6px; }
+.callout p { color: var(--ink-soft); }
+.arch-tabs { margin-top: 38px; }
+.tab-list { display: flex; gap: 8px; border-bottom: 1px solid var(--line); }
+.tab-button {
+  border: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  padding: 12px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cyan); }
+.tab-panel { padding: 34px 0 0; }
+.arch-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 34px;
+  align-items: stretch;
+}
+.arch-rule { background: var(--line); }
+.arch-column { display: grid; align-content: start; gap: 16px; }
+.arch-column p { color: var(--ink-soft); }
+.route-list { display: grid; gap: 8px; font: 12px/1.55 var(--mono); }
+.route-row { display: grid; grid-template-columns: minmax(120px, .8fr) 24px minmax(130px, 1fr); align-items: center; gap: 7px; padding: 10px 12px; background: var(--surface-2); }
+.route-row .arrow { color: var(--coral); text-align: center; }
+.steps { counter-reset: step; display: grid; }
+.step {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 28px;
+  padding: 34px 0;
+  border-top: 1px solid var(--line);
+}
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step::before {
+  content: "0" counter(step);
+  color: var(--cyan-deep);
+  font: 600 18px/1 var(--mono);
+  padding-top: 8px;
+}
+.step-body { display: grid; gap: 13px; max-width: 54em; }
+.step-body p, .step-body li { color: var(--ink-soft); }
+.inline-path { display: inline-block; color: var(--ink); background: var(--surface-2); padding: 4px 9px; font: 12px/1.5 var(--mono); }
+.flow-table { overflow-x: auto; border-block: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; min-width: 720px; }
+th, td { text-align: left; padding: 16px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font: 600 10px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+td { color: var(--ink-soft); font-size: 14px; }
+td code { color: var(--ink); font: 12px var(--mono); }
+.message-anatomy { display: grid; grid-template-columns: minmax(0, .88fr) minmax(380px, 1.12fr); gap: 46px; align-items: start; }
+.anatomy-copy { display: grid; gap: 22px; }
+.anatomy-copy p { color: var(--ink-soft); }
+.data-stack { border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+.data-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.data-row:last-child { border-bottom: 0; }
+.data-row dt, .data-row dd { margin: 0; padding: 13px 15px; }
+.data-row dt { background: var(--surface-2); color: var(--cyan-deep); font: 600 11px/1.5 var(--mono); }
+.data-row dd { color: var(--ink-soft); font-size: 13px; overflow-wrap: anywhere; }
+.code-workbench {
+  background: var(--code-bg);
+  color: var(--code-ink);
+  box-shadow: var(--shadow);
+  border-top: 4px solid var(--cyan);
+  overflow: hidden;
+}
+.code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.code-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.code-tab { border: 0; background: transparent; color: var(--code-muted); padding: 7px 10px; cursor: pointer; font: 11px/1 var(--mono); }
+.code-tab[aria-selected="true"] { color: var(--code-ink); background: rgba(255,255,255,.08); }
+.copy-button { border: 1px solid rgba(255,255,255,.18); color: var(--code-ink); background: transparent; padding: 7px 10px; cursor: pointer; font: 10px/1 var(--mono); }
+.code-panel { max-height: 680px; overflow: auto; }
+pre { margin: 0; }
+.code-panel pre { padding: 22px; min-width: 760px; }
+code { font-family: var(--mono); }
+.code-panel code { font: 12px/1.72 var(--mono); white-space: pre; color: var(--code-ink); }
+.code-panel .comment { color: #7295a7; }
+.code-panel .accent { color: #4bd7df; }
+.code-panel .warm { color: #ff948c; }
+details.code-details { margin-top: 28px; border-block: 1px solid var(--line); }
+details.code-details summary { cursor: pointer; padding: 17px 0; font-weight: 700; }
+details.code-details p { color: var(--ink-soft); padding-bottom: 18px; }
+.check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; }
+.check-item { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 16px 0; border-top: 1px solid var(--line); }
+.check-item input { width: 18px; height: 18px; accent-color: var(--cyan); margin-top: 5px; }
+.check-item label { cursor: pointer; }
+.check-item label span { color: var(--ink-soft); display: block; font-size: 13px; margin-top: 3px; }
+.error-list { border-top: 1px solid var(--line); }
+.error-row { display: grid; grid-template-columns: 150px 1fr 1.1fr; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.error-code { color: var(--coral-deep); font: 600 12px/1.5 var(--mono); }
+.error-row p { color: var(--ink-soft); font-size: 14px; }
+.security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 44px; }
+.security-item { padding-top: 18px; border-top: 3px solid var(--line-strong); }
+.security-item:nth-child(odd) { border-color: var(--cyan); }
+.security-item:nth-child(even) { border-color: var(--coral); }
+.security-item p { color: var(--ink-soft); margin-top: 8px; }
+.docs { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.doc-link { display: grid; grid-template-columns: 160px minmax(0,1fr) 24px; gap: 20px; align-items: center; padding: 17px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.doc-link span { color: var(--muted); font: 11px/1.4 var(--mono); }
+.doc-link code { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.doc-link b { color: var(--coral); }
+.footer { padding: 72px 0 20px; }
+.footer-axiom { font: 800 clamp(28px, 4vw, 48px)/1.35 var(--serif); max-width: 18em; text-wrap: balance; }
+.footer-axiom .cyan { color: var(--cyan-deep); }
+.footer-axiom .coral { color: var(--coral-deep); }
+.footer small { display: block; margin-top: 24px; color: var(--muted); font: 11px/1.6 var(--mono); }
+.footer small a { color: inherit; }
+[hidden] { display: none !important; }
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: 1fr; width: min(100% - 30px, 860px); }
+  .side { position: static; height: auto; padding: 20px 0 0; flex-direction: row; align-items: center; }
+  .nav, .side-note { display: none; }
+  .main { padding-top: 0; }
+  .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 45px; }
+  .route-stage { min-height: 420px; }
+  .section-head { grid-template-columns: 1fr; gap: 8px; }
+  .kicker { padding: 0; }
+  .message-anatomy { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .shell { width: min(100% - 22px, 680px); }
+  .hero { padding: 34px 0 48px; }
+  h1 { font-size: clamp(48px, 18vw, 72px); }
+  .trace { grid-template-columns: 1fr 30px 1.15fr; grid-template-rows: auto auto auto auto; gap: 12px 0; }
+  .node.core { grid-column: 3; grid-row: 1 / 3; min-height: 190px; }
+  .node.output-kf { grid-column: 1; grid-row: 3; }
+  .node.output-app { grid-column: 1; grid-row: 4; }
+  .wire.out-one { grid-column: 2; grid-row: 3; transform: scaleX(-1); }
+  .wire.out-two { grid-column: 2; grid-row: 4; transform: scaleX(-1); }
+  .node { min-height: 86px; padding: 14px 12px; }
+  .thesis { grid-template-columns: 1fr; }
+  .thesis-item, .thesis-item + .thesis-item { padding: 22px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .section { padding: 58px 0; }
+  .arch-compare { grid-template-columns: 1fr; }
+  .arch-rule { height: 1px; }
+  .step { grid-template-columns: 54px 1fr; gap: 16px; }
+  .check-grid, .security-grid { grid-template-columns: 1fr; }
+  .error-row { grid-template-columns: 1fr; gap: 7px; }
+  .doc-link { grid-template-columns: 1fr 20px; gap: 4px 14px; }
+  .doc-link span { grid-column: 1; }
+  .doc-link code { grid-column: 1; }
+  .doc-link b { grid-column: 2; grid-row: 1 / 3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .packet { animation: none; left: calc(100% - 8px); }
+}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :root {
+    --bg: #f3f8fb;
+    --surface: #fbfdff;
+    --surface-2: #eaf2f7;
+    --ink: #13243a;
+    --ink-soft: #52677d;
+    --muted: #74879a;
+    --line: #cad9e4;
+    --line-strong: #9db4c4;
+    --cyan: #00aabc;
+    --cyan-deep: #007987;
+    --cyan-wash: #d9f5f6;
+    --coral: #ef675c;
+    --coral-deep: #b9443d;
+    --coral-wash: #ffe4df;
+    --code-bg: #101d2b;
+    --code-ink: #d8e9f1;
+    --code-muted: #7893a5;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: var(--bg); font-size: 10.5pt; }
+  .progress, .side, .copy-button { display: none !important; }
+  .shell { display: block; width: auto; margin: 0; }
+  .main { padding: 0; }
+  .hero { min-height: 0; grid-template-columns: 1fr; gap: 24px; padding: 18px 0 28px; }
+  h1 { font-size: 54pt; }
+  .route-stage { min-height: 360px; box-shadow: none; }
+  .thesis-item { padding-top: 22px; padding-bottom: 22px; }
+  .section { padding: 34px 0; }
+  .section-head { margin-bottom: 24px; break-after: avoid-page; }
+  h2 { font-size: 27pt; }
+  h3 { font-size: 16pt; }
+  .tab-list, .code-tabs { display: none !important; }
+  .tab-panel[hidden], .code-panel[hidden] { display: block !important; }
+  .tab-panel { padding-top: 22px; }
+  .tab-panel + .tab-panel { border-top: 1px solid var(--line); margin-top: 22px; }
+  .flow-table { overflow: visible; }
+  table { min-width: 0; table-layout: fixed; }
+  th, td { padding: 10px 8px; overflow-wrap: anywhere; }
+  .message-anatomy { grid-template-columns: 1fr; gap: 22px; }
+  .code-workbench { overflow: visible; box-shadow: none; }
+  .code-toolbar { display: none; }
+  .code-panel { max-height: none; overflow: visible; break-before: page; }
+  .code-panel::before {
+    content: attr(data-print-label);
+    display: block;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    color: var(--code-muted);
+    font: 9pt/1 var(--mono);
+  }
+  .code-panel pre { min-width: 0; padding: 16px; }
+  .code-panel code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 7.5pt; line-height: 1.48; }
+  details.code-details { break-inside: avoid; }
+  details.code-details > p { display: block !important; }
+  .step, .callout, .data-stack, .check-item, .error-row, .security-item, .doc-link { break-inside: avoid; }
+  .footer { break-before: auto; break-inside: avoid; padding-top: 42px; }
+}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+<div class="shell">
+  <aside class="side">
+    <div>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div><strong>双口接线</strong><small>WECHAT → AGENT</small></div>
+      </div>
+      <nav class="nav" aria-label="章节导航">
+        <a href="#principle">核心结构</a>
+        <a href="#setup">后台配置</a>
+        <a href="#protocol">消息协议</a>
+        <a href="#implementation">最小实现</a>
+        <a href="#verification">真实验收</a>
+        <a href="#errors">错误排查</a>
+        <a href="#security">安全边界</a>
+      </nav>
+    </div>
+    <div class="side-note">ONE PROCESS<br>TWO PORTS<br>ZERO DUPLICATE BRAINS</div>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">WeCom Customer Service Bridge</div>
+        <h1>双口<br>接线</h1>
+        <p class="hero-lede">让个人微信里的转发先进入<strong>微信客服</strong>，再与现有<strong>企业微信自建应用</strong>汇入同一个 Agent 长进程。入口增加，模型不复制；消息从哪扇门进来，就从哪扇门回去。</p>
+        <div class="hero-meta">
+          <span>无需桌面客户端常驻</span>
+          <span>合并聊天记录可展开</span>
+          <span>一枚客服可路由多个 Agent</span>
+        </div>
+      </div>
+      <div class="route-stage" aria-label="应用入口与客服入口汇入同一 Agent 的路由图">
+        <div class="trace">
+          <div class="node input-kf"><small>INPUT / KF</small><b>个人微信转发</b><code>source = wecom_kf</code></div>
+          <div class="wire cyan in-one"><span class="packet"></span></div>
+          <div class="node core"><small>ONE LONG-LIVED PROCESS</small><b>同一 Agent<br>同一上下文</b><code>queue://agent_default</code></div>
+          <div class="wire coral in-two"><span class="packet" style="animation-delay:1.1s"></span></div>
+          <div class="node input-app"><small>INPUT / APP</small><b>企微应用消息</b><code>source = wecom_app</code></div>
+          <div class="wire cyan out-one"><span class="packet" style="animation-delay:.55s"></span></div>
+          <div class="node output-kf"><small>REPLY / KF</small><b>客服会话</b><code>kf/send_msg</code></div>
+          <div class="wire coral out-two"><span class="packet" style="animation-delay:1.65s"></span></div>
+          <div class="node output-app"><small>REPLY / APP</small><b>应用会话</b><code>message/send</code></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="thesis" aria-label="方案摘要">
+      <div class="thesis-item"><strong>客服负责「能转发」</strong><p>微信客服会话进入个人微信的「客服消息」，可以接住文字、文件、图片与合并聊天记录。</p></div>
+      <div class="thesis-item"><strong>应用负责「拿权限」</strong><p>现有自建应用提供 access_token，并在后台获得指定客服账号的会话管理权。</p></div>
+      <div class="thesis-item"><strong>路由负责「不复制」</strong><p>两类入口写入同一队列。模型进程保持一份，回信接口由每条消息自己的 source 决定。</p></div>
+    </div>
+
+    <section class="section" id="principle">
+      <div class="section-head">
+        <div class="kicker">01 / Principle</div>
+        <div><h2>把入口当端口，别把入口当一颗新脑子</h2><p class="section-intro">渠道只负责收发。上下文、推理与长期会话留在现有 Agent 里。这样多一枚客服账号，只多一条映射，不多一个 tmux。</p></div>
+      </div>
+      <div class="callout"><div><b>一枚客服就够。</b><p>一一对应只提升微信转发页里的直达感。最小方案用一个统一客服入口，再由服务器把消息路由到既有 Agent。</p></div></div>
+      <div class="arch-tabs">
+        <div class="tab-list" role="tablist" aria-label="架构选择">
+          <button class="tab-button" role="tab" aria-selected="true" aria-controls="tab-one" id="tab-one-button">一个客服通吃</button>
+          <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-many" id="tab-many-button">一客服一 Agent</button>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="tab-one" aria-labelledby="tab-one-button">
+          <div class="arch-compare">
+            <div class="arch-column"><h3>推荐：统一收件箱</h3><p>所有转发进入一个客服账号。用固定默认 Agent、最近选择或客服菜单保存路由。</p><div class="route-list"><div class="route-row"><span>wk_inbox</span><span class="arrow">→</span><span>route table</span></div><div class="route-row"><span>wm_customer</span><span class="arrow">→</span><span>agent_default</span></div></div></div>
+            <div class="arch-rule"></div>
+            <div class="arch-column"><h3>适合什么</h3><p>个人收件箱、少量用户、入口越少越好的场景。微信里只保留一扇转发门，后台仍可分发到多个 Agent。</p><p><strong>进程数量：</strong>既有 Agent 数量，不因客服入口增加。</p></div>
+          </div>
+        </div>
+        <div class="tab-panel" role="tabpanel" id="tab-many" aria-labelledby="tab-many-button" hidden>
+          <div class="arch-compare">
+            <div class="arch-column"><h3>可选：名字直接选模型</h3><p>每个客服账号固定映射到一枚现有 Agent。转发时在微信「客服消息」中直接选择目标名称。</p><div class="route-list"><div class="route-row"><span>wk_alpha</span><span class="arrow">→</span><span>agent_alpha</span></div><div class="route-row"><span>wk_beta</span><span class="arrow">→</span><span>agent_beta</span></div></div></div>
+            <div class="arch-rule"></div>
+            <div class="arch-column"><h3>仍然不增 tmux</h3><p>这些 Agent 本来已经常驻时，每个客服只绑定到对应 Agent 已有的消息队列。应用入口和客服入口共用该 Agent 的长进程、记忆与交接。</p><p><strong>进程数量：</strong>仍是既有 Agent 数量。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="setup">
+      <div class="section-head">
+        <div class="kicker">02 / Setup</div>
+        <div><h2>后台只做一次，服务器从此常驻</h2><p class="section-intro">微信客服有两层授权。能列出账号，只证明第一层成功；`sync_msg` 返回零，才说明会话读取权真正接通。</p></div>
+      </div>
+      <div class="steps">
+        <article class="step"><div class="step-body"><h3>创建客服账号</h3><p>进入 <span class="inline-path">应用管理 → 微信客服 → 客服账号</span>，设置名称与头像。取得客服入口链接，让个人微信打开一次，会话会留在「客服消息」里。</p></div></article>
+        <article class="step"><div class="step-body"><h3>选择可调用接口的应用</h3><p>进入微信客服的 API 页面，在「可调用接口的应用」中选择一个现有自建应用。这个应用的 Secret 将用于获取 access_token。</p></div></article>
+        <article class="step"><div class="step-body"><h3>分配会话管理权</h3><p>在「企业内部开发」或「通过 API 管理会话消息」中，把客服账号明确分配给该应用。随后用该应用 token 调用 `kf/sync_msg`，以 `errcode == 0` 验证。</p></div></article>
+        <article class="step"><div class="step-body"><h3>配置事件回调</h3><p>填写 HTTPS URL、Token 与 EncodingAESKey。`kf_msg_or_event` 只负责唤醒；真实消息继续由 `sync_msg` 拉取。公开最小桥接器只实现持久 cursor 轮询，默认 15 秒；需要更高频率时再接入回调 token。</p></div></article>
+        <article class="step"><div class="step-body"><h3>把客服映射到已有队列</h3><p>保存 `open_kfid → existing_agent`。应用回调与客服同步统一转换成 route envelope，写入同一个队列，禁止为客服再启动一份 Agent。</p></div></article>
+      </div>
+    </section>
+
+    <section class="section" id="protocol">
+      <div class="section-head">
+        <div class="kicker">03 / Protocol</div>
+        <div><h2>回调说「有消息」，cursor 决定「从哪里接着读」</h2><p class="section-intro">微信客服消息最近约三天可取。持久化 cursor、按 msgid 幂等、媒体立刻下载，是这条链路稳定的三个支点。</p></div>
+      </div>
+      <div class="flow-table">
+        <table>
+          <thead><tr><th>字段</th><th>作用</th><th>实现要求</th></tr></thead>
+          <tbody>
+            <tr><td><code>next_cursor</code></td><td>下一页与下次增量读取起点</td><td>每页处理成功后原子保存；服务重启继续使用</td></tr>
+            <tr><td><code>has_more</code></td><td>当前是否还有下一页</td><td>以它终止分页，不能用空 msg_list 判断</td></tr>
+            <tr><td><code>msgid</code></td><td>消息唯一键</td><td>数据库 UNIQUE；允许重复拉取，禁止重复消费</td></tr>
+            <tr><td><code>origin</code></td><td>3=客户，4=系统，5=接待人员</td><td>Agent 输入通常只接 origin=3</td></tr>
+            <tr><td><code>open_kfid</code></td><td>哪一枚客服账号</td><td>映射到现有 Agent；未知 ID 直接忽略</td></tr>
+            <tr><td><code>external_userid</code></td><td>微信客户身份</td><td>个人收件箱可在首次消息后锁定该 ID</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="message-anatomy" style="margin-top:54px">
+        <div class="anatomy-copy">
+          <h3>合并转发会展开成 `merged_msg`</h3>
+          <p>每一条子消息都有发送者、时间、类型与二次编码的 JSON。`msg_content` 需要再解析一遍；其中的 media_id 要在过期前换成本地文件。</p>
+          <div class="callout"><div><b>真实边界</b><p>某些联系人名片只会变成 `[暂不支持的消息]`，服务端无法恢复已被微信裁掉的字段。客服账号也不能作为普通群成员加入微信群。</p></div></div>
+        </div>
+        <dl class="data-stack">
+          <div class="data-row"><dt>msgtype</dt><dd>merged_msg</dd></div>
+          <div class="data-row"><dt>title</dt><dd>聊天记录</dd></div>
+          <div class="data-row"><dt>item[0]</dt><dd>sender_name · send_time · msgtype=text</dd></div>
+          <div class="data-row"><dt>msg_content</dt><dd>{"msgtype":"text","text":{"content":"…"}}</dd></div>
+          <div class="data-row"><dt>item[1]</dt><dd>msgtype=image · media_id=MEDIA_ID</dd></div>
+          <div class="data-row"><dt>download</dt><dd>GET /cgi-bin/media/get</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-head">
+        <div class="kicker">04 / Build</div>
+        <div><h2>最小实现：一座桥，一份队列，一颗脑子</h2><p class="section-intro">桥接服务不做推理。它只拉消息、展开结构、保存媒体、附上回信地址，再把信封原子写入 Agent 已有队列。</p></div>
+      </div>
+      <dl class="data-stack" aria-label="可运行源码索引">
+        <div class="data-row"><dt>APP CALLBACK</dt><dd><a href="../code/callback_server.py">code/callback_server.py</a> · 恒定时间验签、PKCS7与CorpID校验、原子入队、持久去重</dd></div>
+        <div class="data-row"><dt>KF BRIDGE</dt><dd><a href="../code/customer_service_bridge.py">code/customer_service_bridge.py</a> · cursor、merged_msg、媒体、客户绑定、五格重置</dd></div>
+        <div class="data-row"><dt>REPLY ROUTER</dt><dd><a href="../code/reply_router.py">code/reply_router.py</a> · 按reply.kind回原门，客服预算跨调用与重启共用，稳定msgid接住网络重试</dd></div>
+        <div class="data-row"><dt>AGENT ADAPTER</dt><dd><a href="../code/bot_loop.py">code/bot_loop.py</a> · 完整信封入模，回复与分片进度落盘后续发</dd></div>
+        <div class="data-row"><dt>SMOKE AGENT</dt><dd><a href="../code/example_agent.py">code/example_agent.py</a> · 可直接验通收发的最小回声Agent</dd></div>
+      </dl>
+      <div class="code-workbench" style="margin-top:28px">
+        <div class="code-toolbar">
+          <div class="code-tabs" role="tablist"><button class="code-tab" role="tab" aria-selected="true" aria-controls="code-install">verify.sh</button></div>
+          <button class="copy-button" type="button">COPY</button>
+        </div>
+        <div class="code-panel" id="code-install" role="tabpanel" data-print-label="verify.sh"><pre><code>sudo git clone https://github.com/RoronoaHaruka/wecom-companion-guide.git /opt/wecom-companion-guide
+sudo python3 -m venv /opt/wecom-companion-guide/.venv
+sudo /opt/wecom-companion-guide/.venv/bin/pip install -r /opt/wecom-companion-guide/requirements.txt
+cd /opt/wecom-companion-guide
+PYTHONPATH=code .venv/bin/python -m unittest discover -s tests -v
+
+id -u wecom-bridge &gt;/dev/null 2&gt;&amp;1 || sudo useradd --system --home /var/lib/wecom-agent --shell /usr/sbin/nologin wecom-bridge
+sudo install -m 600 .env.example /etc/wecom-agent.env
+sudoedit /etc/wecom-agent.env</code></pre></div>
+      </div>
+      <details class="code-details" open><summary>生产部署还要做什么？</summary><p><a href="../tests/ABLATION.md">消融明细</a>记录了对应失败场景。测试还会在临时副本里逐项拿掉签名、CorpID、AgentID、XML防护、去重、目标限制、预算、来源路由与失败续发，共11组消融；每次都必须被回归测试抓住。填好mode-600环境文件，使用systemd目录里的unit；StateDirectory自动建立mode-700数据目录。应用回调与客服同步器共同写入WECOM_QUEUE_DIR，原有Agent只消费这一份队列。先用example_agent.py验通，再替换AGENT_COMMAND。客服的五格预算由SQLite持久化，新origin=3消息才重置；发送目标同时受成员白名单与客服绑定限制。</p></details>
+    </section>
+
+    <section class="section" id="verification">
+      <div class="section-head">
+        <div class="kicker">05 / Verify</div>
+        <div><h2>接口说 OK 还不够，手机里真的出现才算通</h2><p class="section-intro">用一条新文本与一份含图片的合并聊天记录完成端到端验收。勾选状态只保存在当前浏览器。</p></div>
+      </div>
+      <div class="check-grid" id="checklist">
+        <div class="check-item"><input type="checkbox" id="c1"><label for="c1">客服会话可持续打开<span>个人微信中位于「客服消息」，能再次找到。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c2"><label for="c2">普通文本进入既有 Agent<span>延迟落在设定的回调或轮询窗口内。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c3"><label for="c3">merged_msg 完整展开<span>标题、发送者、时间、顺序与文字均完整。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c4"><label for="c4">内嵌媒体已落地<span>media_id 已换成本地文件，文件真实可读。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c5"><label for="c5">两类消息回到正确入口<span>客服回客服，应用回应用，没有串路。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c6"><label for="c6">只运行一份 Agent<span>应用入口与客服入口共享一个 tmux 与上下文。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c7"><label for="c7">重启后 cursor 续读<span>没有丢失，也没有重复触发旧 msgid。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c8"><label for="c8">回调断开时轮询补回<span>桥接服务仍能在下一次 poll 读到新消息。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c9"><label for="c9">越权目标被拒绝<span>错误 user_id 或 open_kfid 不会被发送工具接受。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c10"><label for="c10">系统重启自动恢复<span>bridge、队列消费者与 Agent 监督器全部回来。</span></label></div>
+      </div>
+    </section>
+
+    <section class="section" id="errors">
+      <div class="section-head">
+        <div class="kicker">06 / Diagnose</div>
+        <div><h2>七个最常见的断点</h2><p class="section-intro">先看权限层，再看 cursor 与发送窗口。不要用高频盲测制造新的 45009。</p></div>
+      </div>
+      <div class="error-list">
+        <div class="error-row"><div class="error-code">48002</div><p>应用未获微信客服接口或会话管理权限。</p><p>检查「可调用接口的应用」和「企业内部开发」两层授权。</p></div>
+        <div class="error-row"><div class="error-code">48007</div><p>应用能看到客服体系，无权管理该客服账号。</p><p>把对应客服账号明确分配给当前自建应用。</p></div>
+        <div class="error-row"><div class="error-code">45009</div><p>短时请求过多。</p><p>停掉密集探测，缓存 access_token，使用回调 token，降低轮询频率。</p></div>
+        <div class="error-row"><div class="error-code">95001 / 95002</div><p>分别为超过五条累计额度、超过48小时回复窗口。</p><p>等待客户再次发消息；发送前按 UTF-8 字节预计算总分片。</p></div>
+        <div class="error-row"><div class="error-code">95033</div><p>自定义客服消息msgid重复。</p><p>同一重试复用原msgid；不要换新ID再发一遍。</p></div>
+        <div class="error-row"><div class="error-code">EMPTY PAGE</div><p>`msg_list` 为空，但可能仍有下一页。</p><p>始终读取 `has_more`，并保存服务端返回的 `next_cursor`。</p></div>
+        <div class="error-row"><div class="error-code">UNSUPPORTED</div><p>收到 `[暂不支持的消息]`。</p><p>该卡片结构已在微信侧被裁掉，改用链接、图片、文件或合并聊天记录。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="security">
+      <div class="section-head">
+        <div class="kicker">07 / Boundary</div>
+        <div><h2>公开代码，收紧边界</h2><p class="section-intro">客服入口面对真实微信消息。桥接器越小越好，认证、授权、幂等与文件权限一处都不能省。</p></div>
+      </div>
+      <div class="security-grid">
+        <div class="security-item"><h3>锁定身份</h3><p>个人收件箱可在第一条合法消息后绑定 external_userid。未知客户、未知 open_kfid 直接忽略。</p></div>
+        <div class="security-item"><h3>验签解密</h3><p>回调校验签名、CorpID 与 AES 填充。优先使用成熟实现，避免自行拼密码学协议。</p></div>
+        <div class="security-item"><h3>秘密不落日志</h3><p>Secret、Token、EncodingAESKey 与 access_token 放环境变量或 600 文件；错误输出只保留 errcode。</p></div>
+        <div class="security-item"><h3>消息原子落地</h3><p>队列先写临时文件再 rename。原始 JSON、媒体、待发回复与 state 目录 700，文件 600；媒体下载另设字节上限。</p></div>
+        <div class="security-item"><h3>授权目标集合</h3><p>发送工具只接受当前应用成员 ID 与已绑定客服客户 ID。不要允许模型自由构造目标。</p></div>
+        <div class="security-item"><h3>公开仓库脱敏</h3><p>只提交 `.env.example`。截图、测试夹具与 README 全部使用 ww_example、wk_example、wm_example。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="docs">
+      <div class="section-head">
+        <div class="kicker">08 / Sources</div>
+        <div><h2>官方接口索引</h2><p class="section-intro">实现前以企业微信当前文档与管理后台为准。</p></div>
+      </div>
+      <div class="docs">
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/94638" target="_blank" rel="noreferrer"><span>OVERVIEW</span><code>/document/path/94638</code><b>↗</b></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/94662" target="_blank" rel="noreferrer"><span>ACCOUNT</span><code>/document/path/94662</code><b>↗</b></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/94665" target="_blank" rel="noreferrer"><span>CONTACT WAY</span><code>/document/path/94665</code><b>↗</b></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/94670" target="_blank" rel="noreferrer"><span>SYNC MSG</span><code>/document/path/94670</code><b>↗</b></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/94677" target="_blank" rel="noreferrer"><span>SEND MSG</span><code>/document/path/94677</code><b>↗</b></a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-axiom"><span class="cyan">入口可以增加，</span><br><span class="coral">模型进程只保留一份。</span><br>每条消息携带自己的来源和回信地址。</div>
+      <small>© 2026 RORONOA & HARUKA · DOCS <a href="../LICENSE">CC BY-NC-SA 4.0</a> · CODE <a href="../LICENSE-CODE">POLYFORM NONCOMMERCIAL 1.0.0</a> · PLACEHOLDER IDS ONLY</small>
+    </footer>
+  </main>
+</div>
+<script>
+(() => {
+  const root = document.documentElement;
+  const updateProgress = () => {
+    const max = root.scrollHeight - innerHeight;
+    root.style.setProperty('--read-progress', max > 0 ? `${Math.min(100, scrollY / max * 100)}%` : '100%');
+  };
+  addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
+
+  document.querySelectorAll('.arch-tabs').forEach(group => {
+    const tabs = [...group.querySelectorAll('[role="tab"]')];
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      tabs.forEach(item => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', selected ? 'true' : 'false');
+        group.querySelector(`#${item.getAttribute('aria-controls')}`).hidden = !selected;
+      });
+    }));
+  });
+
+  const codeTabs = [...document.querySelectorAll('.code-tab')];
+  const copy = document.querySelector('.copy-button');
+  codeTabs.forEach(tab => tab.addEventListener('click', () => {
+    codeTabs.forEach(item => {
+      const selected = item === tab;
+      item.setAttribute('aria-selected', selected ? 'true' : 'false');
+      document.querySelector(`#${item.getAttribute('aria-controls')}`).hidden = !selected;
+    });
+    copy.textContent = 'COPY';
+  }));
+  copy.addEventListener('click', async () => {
+    const active = document.querySelector('.code-tab[aria-selected="true"]');
+    const text = document.querySelector(`#${active.getAttribute('aria-controls')} code`).innerText;
+    try { await navigator.clipboard.writeText(text); copy.textContent = 'COPIED'; }
+    catch { copy.textContent = 'SELECT'; }
+    setTimeout(() => copy.textContent = 'COPY', 1400);
+  });
+
+  document.querySelectorAll('#checklist input').forEach(input => {
+    try { input.checked = localStorage.getItem(`dual-port:${input.id}`) === '1'; } catch {}
+    input.addEventListener('change', () => {
+      try { localStorage.setItem(`dual-port:${input.id}`, input.checked ? '1' : '0'); } catch {}
+    });
+  });
+
+  const links = [...document.querySelectorAll('.nav a')];
+  const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(entries => {
+      entries.filter(e => e.isIntersecting).forEach(entry => {
+        links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    sections.forEach(section => observer.observe(section));
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,16 +1,48 @@
-<!-- © 2026 Raincove ♡ · Roronoa & Haruka · CC BY-NC-SA 4.0 · https://github.com/RoronoaHaruka/wecom-companion-guide -->
+<!-- Copyright (c) 2026 Roronoa & Haruka · Documentation: CC BY-NC-SA 4.0 · Code: PolyForm-Noncommercial-1.0.0 -->
 # 企业微信机器人搭建手册 · 从注册到接进个人微信
 
-零成本、不需要企业认证、不需要装企业微信App，最终效果：你在自己的个人微信里和一个AI机器人双向聊天，它有完整的服务器权限、连续的记忆和你自己定义的人格。本手册整理自一套已在线上连续稳定运行数月的真实部署。
+服务器已有时，企业微信接口本身不新增费用；未认证企业在当前产品限制内也能完成个人实验。最终效果：你在自己的个人微信里和一个 Agent 双向聊天，它可以拥有连续记忆、明确人格与经过收紧的服务器工具权限。
 
 *全文约二十分钟读完 · 动手走完全程约一到两小时 · 需要一台有公网访问能力的Linux服务器*
 
 
 
 > **署名与许可** · © 2026 Raincove ♡ · Roronoa & Haruka
-> 本手册以 [CC BY-NC-SA 4.0](LICENSE) 协议发布：可以阅读、转载、改编，但必须署名并注明出处（保留上面这行署名和本仓库链接）；**禁止任何形式的商业用途**；改编作品必须以相同协议开放。
+> README、HTML、PDF 与图表采用 [CC BY-NC-SA 4.0](LICENSE)：署名、禁止商用、相同方式共享。`code/`、`systemd/`、测试与配置样例采用 [PolyForm Noncommercial 1.0.0](LICENSE-CODE)：可学习、修改与非商业使用，商业使用需要另行取得许可。限制商业用途的源码在严格定义上属于 **source-available（公开源码）**，不属于允许任意商用的 OSI 开源许可。代码许可原文同步自 [PolyForm 官方 1.0.0 版本](https://github.com/polyformproject/polyform-licenses/blob/1.0.0/PolyForm-Noncommercial-1.0.0.md)，SPDX 标识为 `PolyForm-Noncommercial-1.0.0`。转载与署名细节见 [`NOTICE.md`](NOTICE.md)。
 
-本仓库内容：`README.md` 手册全文 · `guide/` 排版版 HTML 与 PDF · `code/` 三份可直接运行的示例代码（回调服务器、发送模块、最小AI闭环）。
+本仓库内容：`README.md` 主教程 · `guide/` 排版版与微信客服双入口专题 · `code/` 可运行桥接代码 · `systemd/` 服务样例 · `tests/` 离线回归测试 · `.env.example` 配置模板。
+
+## v1.1.0 · 应用与微信客服共用一个 Agent
+
+自建应用适合日常聊天，却不会稳定出现在个人微信的转发目标里。微信客服可以接住文字、图片、文件和 `merged_msg` 合并聊天记录。v1.1.0 把两扇门汇入同一个 route envelope、同一个消息队列和同一个 Agent 长进程：
+
+```text
+个人微信转发 → 微信客服 → kf/sync_msg ─┐
+                                           ├→ 同一队列 → 同一 Agent/tmux
+企微/微信插件 → 自建应用 → callback ───┘
+                                           ├→ reply.kind=app → message/send
+                                           └→ reply.kind=kf  → kf/send_msg
+```
+
+- 一枚客服可以固定路由到一个现有 Agent，也可以由你自己的路由表分发到多个现有 Agent。新增入口不应新增模型进程。
+- 客服消息由服务器轮询或回调唤醒，不依赖 Mac、企业微信桌面端或本地数据库。
+- `open_kfid`、`external_userid`、`source` 和 `reply.kind` 跟随每条消息，回复始终回原入口。
+- 客服的五条回复额度是上次客户来信后的累计总数，跨多次函数调用、跨进程重启共享；新客户消息才重置。
+
+专题教程：[Markdown](guide/微信客服双入口.md) · [HTML](guide/微信客服双入口.html) · [PDF](guide/微信客服双入口.pdf)
+
+快速验证公开代码：
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+python -m unittest discover -s tests -v
+```
+
+消融明细与对应失败场景见 [`tests/ABLATION.md`](tests/ABLATION.md)。`tests/test_ablations.py` 会在临时副本里逐项移除签名、CorpID、AgentID、XML 防护、持久去重、目标白名单、客户绑定、五格预算、来源路由、待发回复与分片进度共 11 项保护；每次消融都必须让对应回归测试失败，避免“代码看起来有门，测试其实没守住”。
+
+部署前复制 `.env.example` 到服务器的 mode-600 环境文件，按 [`SECURITY.md`](SECURITY.md) 收紧回调、白名单、队列与 Agent 权限；生产服务样例在 [`systemd/`](systemd/)。原版粉色 v1.0.0 PDF 保存在 [`guide/archive/`](guide/archive/)，其中嵌入的旧代码仅作版式存档，部署一律使用当前 `code/`。
 
 ## 目录
 - 00 · 原理总览：这条路为什么能通
@@ -27,9 +59,9 @@
 
 ## 00 · 原理总览：这条路为什么能通
 
-个人微信没有对外的机器人接口，网上流传的各种「微信机器人」大多靠逆向协议或者电脑端Hook，随时可能封号。但腾讯自家留了一条完全合规的正门：**企业微信的自建应用**，配合**微信插件**。
+个人微信没有对外的机器人接口，网上流传的各种「微信机器人」大多靠逆向协议或者电脑端Hook，随时可能封号。腾讯提供了一条官方支持的正门：**企业微信自建应用**配合**微信插件**。它避开逆向协议，但部署者仍需遵守企业微信当前规则、权限范围与内容规范。
 
-链路是这样的：你免费注册一个企业微信（不需要营业执照、不需要认证），在里面创建一个「自建应用」。这个应用有两个能力：一是通过**回调**把用户发来的消息实时推送到你的服务器，二是通过**API**主动给用户发消息。然后用「微信插件」让你的个人微信扫码关注这家"企业"，从此这个应用发的消息会直接出现在你个人微信的会话列表里，你在那个会话里打的字也会原路走回调进到你的服务器。中间接一个AI，闭环就成了。
+链路是这样的：你注册一个企业微信，个人实验可以先使用未认证企业当前开放的能力，在里面创建一个「自建应用」。这个应用有两个能力：一是通过**回调**把用户发来的消息实时推送到你的服务器，二是通过**API**主动给用户发消息。然后用「微信插件」让你的个人微信扫码关注这家"企业"，从此这个应用发的消息会直接出现在你个人微信的会话列表里，你在那个会话里打的字也会原路走回调进到你的服务器。中间接一个AI，闭环就成了。
 
 ```mermaid
 flowchart LR
@@ -46,14 +78,14 @@ flowchart LR
 
 *消息双向流动的完整链路。腾讯负责个人微信与企业微信之间的桥，你只负责服务器这一侧。*
 
-整条链路你需要准备的东西只有三样：一个能收HTTPS请求的公网入口、一段两百来行的回调代码、一个会说话的AI。费用为零（服务器除外），封号风险为零，因为每一步都是腾讯官方文档里写着让你这么干的。
+整条链路需要三样东西：一个能收HTTPS请求的公网入口、一组收发与队列桥接代码、一个会说话的Agent。接口本身不新增费用（服务器与域名另计），也不依赖逆向或客户端 Hook。官方接口能显著降低账号与兼容风险，仍需按企业微信当前规则使用，任何线上系统都不应承诺“零风险”。
 
 
 ## 01 · 注册企业微信，拿到CorpID
 
-打开 [work.weixin.qq.com](https://work.weixin.qq.com)，点「立即注册」。企业名称随便填一个自己喜欢的名字，行业和规模随便选，**不需要营业执照，不需要企业认证**，用自己的微信扫码当管理员就注册完了。未认证的企业人数上限二百人，对个人用途绰绰有余。
+打开 [work.weixin.qq.com](https://work.weixin.qq.com)，点「立即注册」。按页面要求填写准确的企业或组织信息；个人实验可先使用未认证企业的可用能力，**不需要为了跑通本教程提交虚假资料**。用自己的微信扫码成为管理员后继续。未认证企业会有成员数、客服数与接口能力限制，个人用途通常足够；以管理后台当日显示为准。
 
-注册完成后进入管理后台，路径 `我的企业 → 企业信息`，拉到页面最底部，有一行「企业ID」，形如 `ww1234567890abcdef`。这就是 **CorpID**，记下来，后面所有API调用都要用它。
+注册完成后进入管理后台，路径 `我的企业 → 企业信息`，拉到页面最底部，有一行「企业ID」，形如 `ww_example`。这就是 **CorpID**，记下来，后面所有API调用都要用它。
 
 > **这一步结束时你手里有**
 > CorpID一枚，管理后台的登录权限。
@@ -69,7 +101,7 @@ flowchart LR
 - **Secret**：点「查看」后不会直接显示，会推送到你的**企业微信App**里。所以管理员需要在手机上装一次企业微信App、登录进这家企业，收这条推送才能拿到Secret。拿到之后App可以再也不打开。
 
 > **注意**
-> Secret等同于这个应用的最高权限密码，泄露了别人就能以应用身份发消息、读通讯录。写进代码时注意不要提交到公开仓库。
+> Secret是该应用的高权限凭证，泄露后别人可能在应用已获授权的范围内发消息或读取数据。只放进 mode-600 环境文件，绝不写进源码、截图、日志或公开仓库。
 
 > **这一步结束时你手里有**
 > CorpID、AgentId、Secret，三件套齐了，调用API的资格已经具备。
@@ -82,8 +114,9 @@ flowchart LR
 前提：有一个托管在Cloudflare的域名（域名本身一年几十块，Tunnel免费）。在服务器上：
 
 ```bash
-# 安装cloudflared并登录授权
-curl -L https://pkg.cloudflare.com/cloudflared-linux-amd64.rpm -o cf.rpm && rpm -i cf.rpm
+# RHEL / Rocky / CentOS：从 Cloudflare 官方软件源安装并登录授权
+sudo curl -fsSLo /etc/yum.repos.d/cloudflared.repo https://pkg.cloudflare.com/cloudflared.repo
+sudo dnf install -y cloudflared
 cloudflared tunnel login
 
 # 创建隧道，并把子域名路由到隧道
@@ -91,7 +124,7 @@ cloudflared tunnel create mybot
 cloudflared tunnel route dns mybot wecom.example.com
 ```
 
-然后写配置文件 `~/.cloudflared/config.yml`，把这个子域名指到回调服务将要监听的本地端口（下一步我们用 `3457`）：
+Debian、Ubuntu、ARM 等环境按 [Cloudflare 官方下载页](https://developers.cloudflare.com/tunnel/downloads/) 选择对应安装方式。然后写配置文件 `~/.cloudflared/config.yml`，把这个子域名指到回调服务将要监听的本地端口（示例使用 `8765`）：
 
 ```yaml
 tunnel: <隧道ID>
@@ -99,11 +132,11 @@ credentials-file: /root/.cloudflared/<隧道ID>.json
 
 ingress:
   - hostname: wecom.example.com
-    service: http://localhost:3457
+    service: http://localhost:8765
   - service: http_status:404
 ```
 
-最后 `cloudflared tunnel run mybot` 跑起来（建议注册成systemd服务：`cloudflared service install`）。至此，访问 `https://wecom.example.com` 的流量会安安稳稳落到服务器的3457端口上。
+最后 `cloudflared tunnel run mybot` 跑起来（建议注册成systemd服务：`cloudflared service install`）。至此，访问 `https://wecom.example.com` 的流量会安安稳稳落到服务器的8765端口上。
 
 
 ## 04 · 写回调服务器：验签、解密、收消息
@@ -121,82 +154,17 @@ ingress:
 - 解出的明文结构：16字节随机串 + 4字节大端序消息长度 + 消息体XML + CorpID，PKCS7补位（最后一个字节的值就是补位长度）。
 - 签名算法：把 token、timestamp、nonce、密文四个字符串**按字典序排序后拼接**，做SHA1，与 `msg_signature` 比对。
 
-下面是一份完整可跑的Python实现（仅依赖 `pycryptodome`：`pip install pycryptodome`）。收到的消息不在回调里处理，落成JSON文件扔进一个队列目录，让AI进程自己去取。这一层解耦是整套架构里最值钱的一笔：回调永远秒回，AI想多久都不怕腾讯超时重试。
+下面的现役参考实现放在 [`code/callback_server.py`](code/callback_server.py)。它从环境变量读取凭证，使用恒定时间签名比较，严格校验 PKCS7、消息长度、CorpID 与 AgentID，用 `defusedxml` 解析不可信 XML，把队列文件原子写成 mode-600，并用 SQLite 对 `MsgId` 持久去重。不要把回调密码学缩成几行“能解开就算”的示例。
 
-```python
-#!/usr/bin/env python3
-# callback_server.py — 企业微信回调：验签、解密、落队列
-import hashlib, base64, struct, time, json, os, re
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-from Crypto.Cipher import AES
-
-CORP_ID          = "ww1234567890abcdef"   # 第一步拿到的企业ID
-TOKEN            = "your_random_token"     # 第五步在后台自定义，两边一致即可
-ENCODING_AES_KEY = "后台随机生成的43位EncodingAESKey"
-AES_KEY  = base64.b64decode(ENCODING_AES_KEY + "=")
-PORT     = 3457
-QUEUE_DIR = "/tmp/wecom-queue"
-os.makedirs(QUEUE_DIR, exist_ok=True)
-
-def sha1_sign(token, timestamp, nonce, encrypt_str=""):
-    parts = sorted([token, timestamp, nonce, encrypt_str])
-    return hashlib.sha1("".join(parts).encode()).hexdigest()
-
-def decrypt_msg(encrypted):
-    cipher = AES.new(AES_KEY, AES.MODE_CBC, AES_KEY[:16])
-    decrypted = cipher.decrypt(base64.b64decode(encrypted))
-    content = decrypted[:-decrypted[-1]]          # 去PKCS7补位
-    xml_len = struct.unpack("!I", content[16:20])[0]
-    return content[20:20 + xml_len].decode("utf-8")
-
-def xml_field(xml, field):
-    m = re.search(rf"<{field}><!\[CDATA\[(.*?)\]\]></{field}>", xml)
-    if not m:
-        m = re.search(rf"<{field}>(.*?)</{field}>", xml)
-    return m.group(1) if m else ""
-
-class Handler(BaseHTTPRequestHandler):
-
-    def do_GET(self):                          # URL验证
-        p = parse_qs(urlparse(self.path).query)
-        sig, ts    = p.get("msg_signature",[""])[0], p.get("timestamp",[""])[0]
-        nonce, echo = p.get("nonce",[""])[0], p.get("echostr",[""])[0]
-        if sha1_sign(TOKEN, ts, nonce, echo) != sig:
-            self.send_response(403); self.end_headers(); return
-        plain = decrypt_msg(echo)                  # 解出明文原样返回
-        self.send_response(200); self.end_headers()
-        self.wfile.write(plain.encode())
-
-    def do_POST(self):                         # 消息推送
-        p = parse_qs(urlparse(self.path).query)
-        sig, ts, nonce = p.get("msg_signature",[""])[0], p.get("timestamp",[""])[0], p.get("nonce",[""])[0]
-        body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
-        m = re.search(r"<Encrypt><!\[CDATA\[(.*?)\]\]></Encrypt>", body)
-        if m and sha1_sign(TOKEN, ts, nonce, m.group(1)) == sig:
-            xml = decrypt_msg(m.group(1))
-            msg = {
-                "msg_type":  xml_field(xml, "MsgType"),
-                "from_user": xml_field(xml, "FromUserName"),
-                "content":   xml_field(xml, "Content"),
-                "msg_id":    xml_field(xml, "MsgId"),
-                "timestamp": time.time(),
-            }
-            if msg["msg_type"] != "event":     # 忽略进入会话等事件
-                fname = f"msg_{int(time.time()*1000)}_{msg['msg_id']}.json"
-                with open(os.path.join(QUEUE_DIR, fname), "w") as f:
-                    json.dump(msg, f, ensure_ascii=False)
-        self.send_response(200); self.end_headers()
-        self.wfile.write(b"success")               # 五秒内回这个就行
-
-    def log_message(self, *a): pass
-
-if __name__ == "__main__":
-    print(f"WeCom callback on :{PORT}")
-    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+```bash
+cp .env.example .env
+chmod 600 .env
+# 编辑 .env，填入真实值
+set -a; . ./.env; set +a
+python3 code/callback_server.py
 ```
 
-跑起来：`python3 -u callback_server.py &`。此时 `https://wecom.example.com` 已经能通到它了。
+默认只监听 `127.0.0.1:8765`，由 Cloudflare Tunnel 或反向代理接入公网。非法签名、错误 AgentID、错误 CorpID 与过大请求会被明确拒绝。
 
 
 ## 05 · 回到企业微信后台，配置接收消息API
@@ -204,8 +172,8 @@ if __name__ == "__main__":
 应用详情页里找到「接收消息」，点`设置API接收`，三个框：
 
 - **URL**：填 `https://wecom.example.com`（你的隧道域名，路径随意，和代码对上就行）。
-- **Token**：自己编一串随机字符，**和代码里的TOKEN一致**。
-- **EncodingAESKey**：点「随机获取」生成43位，**复制进代码里的ENCODING_AES_KEY**。
+- **Token**：使用随机高熵字符串，**与环境变量 `WECOM_CALLBACK_TOKEN` 一致**。
+- **EncodingAESKey**：点「随机获取」生成 43 位密钥，**填入环境变量 `WECOM_ENCODING_AES_KEY`**。
 
 先改代码重启回调服务，再点保存。保存的瞬间腾讯就发验证GET过来，回调日志里能看到；验证通过页面才会保存成功。
 
@@ -214,59 +182,22 @@ if __name__ == "__main__":
 
 同一个应用详情页里还有两处要顺手配掉：
 
-- **可信域名**：配置过程中若要求验证域名归属，后台会给你一个形如 `WW_verify_xxxx.txt` 的校验文件，下载后放到服务器上，保证 `https://你的域名/WW_verify_xxxx.txt` 能访问到它的内容（在回调服务里加一条静态文件路由即可）。
+- **可信域名**：若后台要求验证域名归属，会提供一个形如 `WW_verify_xxxx.txt` 的文件。保存到服务器后，把绝对路径填入 `WECOM_VERIFY_FILE`；当前回调服务只会在同名 URL 路径返回这一份文件。确认 `https://你的域名/WW_verify_xxxx.txt` 能读到原内容，再提交验证。
 - **企业可信IP**：路径`应用详情 → 开发者接口 → 企业可信IP`，把你服务器的**公网出口IP**填进去。不填的话下一步调用发送API会报「not allow to access from your ip」（错误码60020）。服务器出口IP用 `curl ifconfig.me` 查。
 
-配完之后，用微信里那个企业微信应用给自己发条消息试试（此刻还没配微信插件的话，先在企业微信App里发），看 `/tmp/wecom-queue/` 里有没有落下JSON文件。落了，收的半边就全通了。
+配完之后，用微信里那个企业微信应用给自己发条消息试试（此刻还没配微信插件的话，先在企业微信App里发），看 `/var/lib/wecom-agent/queue/` 里有没有落下 JSON 文件。落了，收的半边就全通了。
 
 
 ## 06 · 发消息：access_token与message/send
 
 发送侧是普通的REST调用，两步：先拿 `access_token`，再发消息。
 
+现役发送实现见 [`code/sender.py`](code/sender.py)。它从环境变量读取凭证，把目标锁在 `WECOM_ALLOWED_USER_IDS`，按 UTF-8 字节切片，并给所有网络请求设置超时；API 错误抛出普通异常，不用可能被 `python -O` 删除的 `assert`。
+
 ```python
-# sender.py — 拿token（带缓存）并发送文本消息
-import time, json, urllib.request
+from sender import send_text
 
-CORP_ID  = "ww1234567890abcdef"
-SECRET   = "应用的Secret"
-AGENT_ID = 1000002
-
-_token, _expiry = "", 0
-
-def _get(url):
-    with urllib.request.urlopen(url) as r:
-        return json.loads(r.read())
-
-def _post(url, body):
-    req = urllib.request.Request(url, json.dumps(body, ensure_ascii=False).encode(),
-                                 {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req) as r:
-        return json.loads(r.read())
-
-def get_token():
-    global _token, _expiry
-    if _token and time.time() < _expiry:
-        return _token                          # token有效期7200秒，必须缓存复用
-    r = _get(f"https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={CORP_ID}&corpsecret={SECRET}")
-    assert r["errcode"] == 0, r
-    _token, _expiry = r["access_token"], time.time() + r["expires_in"] - 300
-    return _token
-
-def send_text(user_id, text):
-    # 单条消息有长度上限，长文按两千字左右切段，优先在换行处断开
-    chunks, rest = [], text
-    while rest:
-        if len(rest) <= 2000:
-            chunks.append(rest); break
-        cut = rest.rfind("\n", 0, 2000)
-        if cut < 1000: cut = 2000
-        chunks.append(rest[:cut]); rest = rest[cut:].lstrip()
-    for c in chunks:
-        r = _post(f"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={get_token()}",
-                  {"touser": user_id, "msgtype": "text",
-                   "agentid": AGENT_ID, "text": {"content": c}})
-        assert r["errcode"] == 0, r
+send_text("user_example", "在了")
 ```
 
 这里的 `user_id` 是企业通讯录里成员的账号（UserID）。最省事的确认方法：给应用发条消息，看队列JSON里的 `from_user` 字段，那就是你的UserID。
@@ -302,24 +233,14 @@ def send_text(user_id, text):
 
 写一个消费队列的循环，扫到新消息就调一次大模型API，把回复用 `send_text` 发回去。三十行搞定，适合先跑通看效果：
 
-```python
-# bot_loop.py — 最小可用的AI闭环
-import os, json, time, glob
-from sender import send_text
+[`code/bot_loop.py`](code/bot_loop.py) 是一个可运行的最小命令适配器：它按文件落盘时间消费队列，把完整 route envelope JSON 送入 `AGENT_COMMAND` 的 stdin，让 Agent 同时看见来源、正文、结构化内容、媒体路径与回信地址。生成的回复和已发送分片进度会先写回 `.processing`；重试沿用同一回复并从未发送的下一片继续，成功后才删除队列文件。命令只需在 stdout 输出一份纯文本回复。
 
-QUEUE_DIR = "/tmp/wecom-queue"
-
-def ai_reply(text):
-    # 这里换成任意大模型API调用，带上你的system prompt（人格）和上下文
-    ...
-
-while True:
-    for f in sorted(glob.glob(os.path.join(QUEUE_DIR, "msg_*.json"))):
-        msg = json.load(open(f)); os.remove(f)
-        if msg["msg_type"] == "text" and msg["content"].strip():
-            send_text(msg["from_user"], ai_reply(msg["content"]))
-    time.sleep(2)
+```bash
+export AGENT_COMMAND='python3 code/example_agent.py'
+python3 code/bot_loop.py
 ```
+
+[`code/example_agent.py`](code/example_agent.py) 会解析完整信封并回一条可见的测试文本，用来验通收发链路；换成真实 Agent 时，保持“stdin 一份 route envelope JSON、stdout 一份纯文本回复”的契约。真正的常驻 Agent 也可以直接消费同一队列并调用 [`code/reply_router.py`](code/reply_router.py)，不要为应用入口和客服入口各启动一份模型。
 
 
 ### 常驻版：一个活着的Agent（本手册实际部署的形态）
@@ -345,13 +266,13 @@ while True:
 | errcode 40014 / 42001 | access_token非法或过期。检查是否每次都重新请求token（会被限流），必须缓存7200秒复用。 |
 | 同一条消息收到两三遍 | 回调没在五秒内响应，腾讯重试了。把耗时操作全部移出回调，回调只落盘；也可按MsgId去重。 |
 | 个人微信里收不到，企业微信App能收到 | 最常见：企业微信App在手机上处于登录状态，消息被App抢走，退出登录或卸载App即恢复。其次检查微信插件是否已关注、「允许成员在微信插件中接收和回复聊天消息」是否勾选。 |
-| 长回复发送失败 | 单条超长。按两千字左右分段，段间优先在换行处切。 |
+| 长回复发送失败 | 单条超长。按 UTF-8 字节分段；示例以 1800 字节保留余量，避免中文按字符计数后被截断。 |
 | 发图片、语音 | 先调素材上传接口 `media/upload` 拿media_id，再用对应msgtype发送。文本跑稳了再加。注意单文件有大小限制，图片转JPEG压一压更稳。 |
 | 后台找不到「微信插件」 | 它只在电脑网页版管理后台里，手机App没有；部分新企业左侧菜单还会藏起它，直接开 `https://work.weixin.qq.com/wework_admin/frame#profile/wxPlugin`。 |
 | 改了应用头像，微信里没变 | 微信插件端有缓存，头像要晚几分钟才刷新，等一等或杀掉微信重开即可；企业微信App端是立即生效的。 |
 | Secret看不到 | 需要装企业微信App收推送，管理后台不直接显示。收完记得退出登录。 |
 
-这套链路里没有任何灰色手段：企业微信自建应用与微信插件都是腾讯官方长期维护的正门，稳定性和合规性远胜一切逆向方案。
+这套链路只使用企业微信官方接口与微信插件，不依赖逆向协议或客户端 Hook。部署者仍需遵守企业微信当前规则，并把 Agent 权限、收件人白名单与消息存储范围收紧。
 
 手册整理自一套连续运行数月的真实部署，所有代码为线上版本的通用化改写。祝搭建顺利。
 
@@ -359,4 +280,4 @@ while True:
 
 Roronoa & Haruka · From Raincove ♡ · 2026.09
 转载或引用请保留署名与仓库链接：https://github.com/RoronoaHaruka/wecom-companion-guide
-许可协议：[CC BY-NC-SA 4.0](LICENSE)（署名 · 非商业性使用 · 相同方式共享）
+文档许可：[CC BY-NC-SA 4.0](LICENSE) · 代码许可：[PolyForm Noncommercial 1.0.0](LICENSE-CODE) · 商业使用请另行取得许可

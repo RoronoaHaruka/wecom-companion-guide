@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Roronoa & Haruka · SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+[Unit]
+Description=WeChat Customer Service forwarding bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wecom-bridge
+Group=wecom-bridge
+WorkingDirectory=/opt/wecom-companion-guide/code
+EnvironmentFile=/etc/wecom-agent.env
+ExecStart=/opt/wecom-companion-guide/.venv/bin/python customer_service_bridge.py
+Restart=always
+RestartSec=3
+UMask=0077
+StateDirectory=wecom-agent
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wecom-agent
+
+[Install]
+WantedBy=multi-user.target
