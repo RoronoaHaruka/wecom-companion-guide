@@ -81,7 +81,7 @@ python3 code/file_sender.py --app-user user_example --path /var/lib/wecom-agent/
 
 文字与文件之后是声音。[`code/voice_sender.py`](code/voice_sender.py) 把「一句话文本 → TTS → AMR-NB → 语音条」封装成受控工具：应用门走 `media/upload?type=voice` → `message/send(msgtype=voice)`，客服门走 `kf/send_msg(msgtype=voice)` 并占用与文本相同的五格回复预算。TTS 默认接 ElevenLabs，key 与 voice id 只住在服务器环境变量里；合成、解码、编码三步都是可注入的函数，离线测试不碰网络。
 
-防护五层各有消融项（见 [`tests/ABLATION.md`](tests/ABLATION.md)）：文本长度上限在 TTS 之前拦截、按解码后 PCM 实际时长校验 60 秒边界、编码后按 2MB API 上限校验字节、应用收件人白名单、客服绑定客户校验。专题教程还有下半场：TTS 中转服务的形态、`/play?text=` 播放链接模式，以及 iOS 静音拨片下网页无声的双保险解法。
+防护五层各有消融项（见 [`tests/ABLATION.md`](tests/ABLATION.md)）：文本长度上限在 TTS 之前拦截、按解码后 PCM 实际时长校验 60 秒边界、编码后按 2MB API 上限校验字节、应用收件人白名单、客服绑定客户校验。专题教程还有下半场：TTS 中转服务的形态、`/play?text=` 播放链接模式，以及 iOS 静音拨片下网页无声的双保险解法；番外一节收了场景感语音的工艺笔记与带授权意识的素材来源指南。
 
 ```bash
 python3 code/voice_sender.py --app-user user_example --text "到家了记得说一声。"
