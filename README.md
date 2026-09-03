@@ -204,6 +204,36 @@ send_text("user_example", "在了")
 
 跑一句 `send_text("你的UserID", "在了")`，手机上响了，发的半边也通了。
 
+### 文件消息有方向差异
+
+传统自建应用的文件能力是单向不对称的：
+
+- **应用主动发给成员：支持。** 先调用 [`media/upload`](https://developer.work.weixin.qq.com/document/path/90253)，使用 `type=file` 上传文件并取得 `media_id`；再调用 [`message/send`](https://developer.work.weixin.qq.com/document/path/90236)，发送 `msgtype=file`。普通文件最大 20MB，文件需大于 5 字节，`media_id` 有效期为 3 天，上传表单里的 `filename` 决定客户端显示的文件名。
+- **成员发给传统自建应用：官方回调不提供文件消息。** [`接收消息格式`](https://developer.work.weixin.qq.com/document/path/90239) 只列出 `text`、`image`、`voice`、`video`、`location`、`link` 六种普通消息，没有 `MsgType=file`。给回调处理器预留 `file` 分支，也不能证明腾讯会投递这一类型。
+
+最小发送流程：
+
+```http
+POST /cgi-bin/media/upload?access_token=ACCESS_TOKEN&type=file
+Content-Type: multipart/form-data
+media=@example.pdf
+```
+
+取得 `MEDIA_ID` 后：
+
+```json
+{
+  "touser": "user_example",
+  "msgtype": "file",
+  "agentid": 1000002,
+  "file": {"media_id": "MEDIA_ID"}
+}
+```
+
+“自建应用通常不出现在个人微信的转发目标列表里”和“应用能否主动发送文件”也属于两个接口边界。用户文件需要稳定进入 Agent 时，使用本仓库 v1.1.0 的微信客服入口：[`kf/sync_msg`](https://developer.work.weixin.qq.com/document/path/94670) 明确支持 `file`，下载后再进入同一 Agent 队列；微信客服主动回文件则使用 [`kf/send_msg`](https://developer.work.weixin.qq.com/document/path/94677)。
+
+当前 [`code/sender.py`](code/sender.py) 与 [`code/reply_router.py`](code/reply_router.py) 保持最小文本发送实现，没有封装通用文件工具。若要让 Agent 主动发任意文件，应另加一个受控工具，保留收件人白名单、允许路径、大小上限和 MIME 校验，内部执行上述上传与发送两步。现成适配器缺少这层封装时，会表现为“不能发文件”；这是适配器能力范围，企微发送接口仍然可用。
+
 > **小技巧：名字和头像也走API**
 > 机器人的头像和名字不用进后台改，程序自己就能换：先用 `media/upload`（type=image）把图片传上去拿到media_id，再调 `agent/set` 传 `{"agentid": ..., "logo_mediaid": "..."}` 即可换头像（改名字传 `name` 字段）。企业微信端立即生效；微信插件那头有缓存，头像会晚几分钟才刷过来，等一等或重启微信就好。让机器人自己给自己换头像，是很好用的人格化小魔术。
 
