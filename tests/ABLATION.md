@@ -33,7 +33,12 @@ PYTHONPATH=code python tests/test_ablations.py
 | Outbound file size cap | A file above `WECOM_FILE_MAX_BYTES` is accepted for upload |
 | Outbound file recipient allowlist | An unapproved enterprise UserID receives a file through the application door |
 | Outbound file customer binding | A different `external_userid` receives a file through the customer-service door |
+| Outbound voice text cap | A text longer than `WECOM_VOICE_MAX_TEXT_CHARS` reaches the TTS spend path |
+| Outbound voice duration cap | Decoded audio longer than `WECOM_VOICE_MAX_SECONDS` is accepted for upload |
+| Outbound voice byte cap | An encoded voice above `WECOM_VOICE_MAX_BYTES` is accepted for upload |
+| Outbound voice recipient allowlist | An unapproved enterprise UserID receives a voice through the application door |
+| Outbound voice customer binding | A different `external_userid` receives a voice through the customer-service door |
 
-Release result on 2026-09-03: **16 of 16 ablations were detected**. The unmodified suite passed after the experiment.
+Release result on 2026-09-03: **21 of 21 ablations were detected**. The unmodified suite passed after the experiment.
 
 Documentation © 2026 Roronoa & Haruka · From Raincove ♡ · [CC BY-NC-SA 4.0](../LICENSE)

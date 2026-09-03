@@ -77,6 +77,18 @@ python3 code/file_sender.py --envelope /var/lib/wecom-agent/queue/msg_kf_example
 python3 code/file_sender.py --app-user user_example --path /var/lib/wecom-agent/outbox/report.pdf
 ```
 
+## v1.4.0 · 一副声音：原生语音条与网页播放
+
+文字与文件之后是声音。[`code/voice_sender.py`](code/voice_sender.py) 把「一句话文本 → TTS → AMR-NB → 语音条」封装成受控工具：应用门走 `media/upload?type=voice` → `message/send(msgtype=voice)`，客服门走 `kf/send_msg(msgtype=voice)` 并占用与文本相同的五格回复预算。TTS 默认接 ElevenLabs，key 与 voice id 只住在服务器环境变量里；合成、解码、编码三步都是可注入的函数，离线测试不碰网络。
+
+防护五层各有消融项（见 [`tests/ABLATION.md`](tests/ABLATION.md)）：文本长度上限在 TTS 之前拦截、按解码后 PCM 实际时长校验 60 秒边界、编码后按 2MB API 上限校验字节、应用收件人白名单、客服绑定客户校验。专题教程还有下半场：TTS 中转服务的形态、`/play?text=` 播放链接模式，以及 iOS 静音拨片下网页无声的双保险解法。
+
+```bash
+python3 code/voice_sender.py --app-user user_example --text "到家了记得说一声。"
+```
+
+专题教程：[Markdown](guide/原生语音.md)
+
 ## 目录
 - 00 · 原理总览：这条路为什么能通
 - 01 · 注册企业微信，拿到CorpID
@@ -331,6 +343,7 @@ python3 code/bot_loop.py
 | 个人微信里收不到，企业微信App能收到 | 最常见：企业微信App在手机上处于登录状态，消息被App抢走，退出登录或卸载App即恢复。其次检查微信插件是否已关注、「允许成员在微信插件中接收和回复聊天消息」是否勾选。 |
 | 长回复发送失败 | 单条超长。按 UTF-8 字节分段；示例以 1800 字节保留余量，避免中文按字符计数后被截断。 |
 | 发图片、语音 | 先调素材上传接口 `media/upload` 拿media_id，再用对应msgtype发送。文本跑稳了再加。注意单文件有大小限制，图片转JPEG压一压更稳。 |
+| 语音条发不出去或收到不能播 | `type=voice` 素材只认 AMR-NB（8kHz 单声道，文件头 `#!AMR\n`），且 ≤2MB、≤60秒；MP3/WAV 直接当voice上传会被拒。转码与逐帧编码的完整套路见 [一副声音](guide/原生语音.md)。 |
 | 微信里直接给应用发文件，显示「已发送」，服务器却零回调 | 官方回调类型表没有 `file`，这类消息在腾讯侧被静默丢弃：不报错、不重试，发送方看起来一切正常，最能骗人。要把文件送进 Agent，转发给微信客服入口（v1.1.0）；服务器主动发文件用 `code/file_sender.py`（v1.3.0）。 |
 | 后台找不到「微信插件」 | 它只在电脑网页版管理后台里，手机App没有；部分新企业左侧菜单还会藏起它，直接开 `https://work.weixin.qq.com/wework_admin/frame#profile/wxPlugin`。 |
 | 改了应用头像，微信里没变 | 微信插件端有缓存，头像要晚几分钟才刷新，等一等或杀掉微信重开即可；企业微信App端是立即生效的。 |

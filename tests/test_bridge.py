@@ -29,6 +29,7 @@ import customer_service_bridge
 import file_sender
 import reply_router
 import sender
+import voice_sender
 
 
 ENCODING_KEY = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
@@ -540,6 +541,175 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(body["msgtype"], "file")
             self.assertEqual(body["file"], {"media_id": "media-1"})
             self.assertTrue(body["msgid"].startswith("f"))
+            with sqlite3.connect(state_db) as db:
+                remaining = db.execute(
+                    "SELECT remaining FROM reply_budget WHERE route_key=?",
+                    ("wk_example:wm_example",),
+                ).fetchone()
+            self.assertEqual(remaining, (4,))
+
+    def test_voice_policy_caps_text_duration_and_bytes(self):
+        policy = voice_sender.VoicePolicy(max_text_chars=10, max_seconds=2, max_bytes=64)
+        self.assertEqual(policy.validate_text("  短句  "), "短句")
+        with self.assertRaisesRegex(ValueError, "WECOM_VOICE_MAX_TEXT_CHARS"):
+            policy.validate_text("x" * 11)
+        with self.assertRaisesRegex(ValueError, "voice text is empty"):
+            policy.validate_text("   ")
+
+        environment = {
+            "WECOM_CORP_ID": "ww_example",
+            "WECOM_APP_SECRET": "secret",
+            "WECOM_AGENT_ID": "1000002",
+            "WECOM_ALLOWED_USER_IDS": "user_example",
+            "WECOM_OPEN_KFID": "wk_example",
+        }
+        with patch.dict(os.environ, environment, clear=False):
+            router = reply_router.ReplyRouter()
+        second_of_pcm = b"\0\0" * voice_sender.PCM_RATE
+
+        too_long = voice_sender.VoiceSender(
+            policy,
+            router,
+            synthesize=lambda text: b"mp3",
+            decode=lambda audio: second_of_pcm * 3,
+            encode=lambda pcm: b"unreached",
+        )
+        with self.assertRaisesRegex(ValueError, "WECOM_VOICE_MAX_SECONDS"):
+            too_long.render("hello")
+
+        too_fat = voice_sender.VoiceSender(
+            policy,
+            router,
+            synthesize=lambda text: b"mp3",
+            decode=lambda audio: second_of_pcm,
+            encode=lambda pcm: b"x" * 65,
+        )
+        with self.assertRaisesRegex(ValueError, "WECOM_VOICE_MAX_BYTES"):
+            too_fat.render("hello")
+
+        fits = voice_sender.VoiceSender(
+            policy,
+            router,
+            synthesize=lambda text: b"mp3",
+            decode=lambda audio: second_of_pcm,
+            encode=lambda pcm: b"#!AMR\nframes",
+        )
+        self.assertEqual(fits.render("hello"), b"#!AMR\nframes")
+
+    def test_voice_sender_speaks_through_the_application_door(self):
+        environment = {
+            "WECOM_CORP_ID": "ww_example",
+            "WECOM_APP_SECRET": "secret",
+            "WECOM_AGENT_ID": "1000002",
+            "WECOM_ALLOWED_USER_IDS": "user_example",
+            "WECOM_OPEN_KFID": "wk_example",
+        }
+        with patch.dict(os.environ, environment, clear=False):
+            router = reply_router.ReplyRouter()
+        policy = voice_sender.VoicePolicy(max_text_chars=100, max_seconds=60, max_bytes=1024)
+        tool = voice_sender.VoiceSender(
+            policy,
+            router,
+            synthesize=lambda text: b"mp3",
+            decode=lambda audio: b"\0\0" * voice_sender.PCM_RATE,
+            encode=lambda pcm: b"#!AMR\nframes",
+        )
+        calls = []
+
+        def record(method, url, body=None):
+            calls.append((url, body))
+            return {"errcode": 0}
+
+        with patch.object(router.app_sender, "access_token", return_value="token"):
+            with patch.object(tool, "upload", return_value="media-1") as upload:
+                with patch.object(router.app_sender, "request_json", side_effect=record):
+                    with self.assertRaisesRegex(PermissionError, "allowlisted"):
+                        tool.send_app_voice("user_other", "晚安")
+                    media_id = tool.send(
+                        {"reply": {"kind": "app", "user_id": "user_example"}},
+                        "晚安",
+                    )
+        self.assertEqual(media_id, "media-1")
+        upload.assert_called_once()
+        self.assertEqual(len(calls), 1)
+        url, body = calls[0]
+        self.assertIn("/message/send", url)
+        self.assertEqual(body["msgtype"], "voice")
+        self.assertEqual(body["voice"], {"media_id": "media-1"})
+        self.assertEqual(body["touser"], "user_example")
+
+    def test_voice_sender_kf_door_respects_binding_and_budget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state_db = root / "state.sqlite3"
+            config = customer_service_bridge.Config(
+                corp_id="ww_example",
+                app_secret="secret",
+                open_kfid="wk_example",
+                route_agent="agent_default",
+                queue_dir=root / "queue",
+                data_dir=root / "data",
+                state_db=state_db,
+                expected_external_userid="wm_example",
+            )
+            store = customer_service_bridge.Store(config)
+            with store.lock:
+                store.db.execute(
+                    "INSERT INTO kf_bindings(open_kfid,external_userid) VALUES(?,?)",
+                    ("wk_example", "wm_example"),
+                )
+                store.db.execute(
+                    "INSERT INTO reply_budget(route_key,source_msg_id,remaining,updated_at) VALUES(?,?,5,0)",
+                    ("wk_example:wm_example", "source-1"),
+                )
+                store.db.commit()
+            environment = {
+                "WECOM_CORP_ID": "ww_example",
+                "WECOM_APP_SECRET": "secret",
+                "WECOM_AGENT_ID": "1000002",
+                "WECOM_ALLOWED_USER_IDS": "user_example",
+                "WECOM_OPEN_KFID": "wk_example",
+                "WECOM_STATE_DB": str(state_db),
+            }
+            with patch.dict(os.environ, environment, clear=False):
+                router = reply_router.ReplyRouter()
+            policy = voice_sender.VoicePolicy(max_text_chars=100, max_seconds=60, max_bytes=1024)
+            tool = voice_sender.VoiceSender(
+                policy,
+                router,
+                synthesize=lambda text: b"mp3",
+                decode=lambda audio: b"\0\0" * voice_sender.PCM_RATE,
+                encode=lambda pcm: b"#!AMR\nframes",
+            )
+            calls = []
+
+            def record(method, url, body=None):
+                calls.append((url, body))
+                return {"errcode": 0}
+
+            with patch.object(router.app_sender, "access_token", return_value="token"):
+                with patch.object(tool, "upload", return_value="media-1"):
+                    with patch.object(router.app_sender, "request_json", side_effect=record):
+                        with self.assertRaisesRegex(PermissionError, "bound customer"):
+                            tool.send_kf_voice("wk_example", "wm_other", "晚安")
+                        media_id = tool.send(
+                            {
+                                "msg_id": "source-1",
+                                "reply": {
+                                    "kind": "kf",
+                                    "open_kfid": "wk_example",
+                                    "user_id": "wm_example",
+                                },
+                            },
+                            "晚安",
+                        )
+            self.assertEqual(media_id, "media-1")
+            self.assertEqual(len(calls), 1)
+            url, body = calls[0]
+            self.assertIn("/kf/send_msg", url)
+            self.assertEqual(body["msgtype"], "voice")
+            self.assertEqual(body["voice"], {"media_id": "media-1"})
+            self.assertTrue(body["msgid"].startswith("v"))
             with sqlite3.connect(state_db) as db:
                 remaining = db.execute(
                     "SELECT remaining FROM reply_budget WHERE route_key=?",

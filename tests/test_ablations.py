@@ -123,6 +123,36 @@ ABLATIONS = (
         "if not router.bound_customer(open_kfid, user_id):",
         "if False:",
     ),
+    Ablation(
+        "outbound voice text cap",
+        "code/voice_sender.py",
+        "if len(stripped) > self.max_text_chars:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound voice duration cap",
+        "code/voice_sender.py",
+        "if duration > self.policy.max_seconds:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound voice byte cap",
+        "code/voice_sender.py",
+        "if len(encoded) > self.policy.max_bytes:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound voice recipient allowlist",
+        "code/voice_sender.py",
+        "if user_id not in app.config.allowed_user_ids:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound voice customer binding",
+        "code/voice_sender.py",
+        "if not router.bound_customer(open_kfid, user_id):",
+        "if False:",
+    ),
 )
 
 
