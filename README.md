@@ -10,7 +10,7 @@
 > **署名与许可** · © 2026 Raincove ♡ · Roronoa & Haruka
 > README、HTML、PDF 与图表采用 [CC BY-NC-SA 4.0](LICENSE)：署名、禁止商用、相同方式共享。`code/`、`systemd/`、测试与配置样例采用 [PolyForm Noncommercial 1.0.0](LICENSE-CODE)：可学习、修改与非商业使用，商业使用需要另行取得许可。限制商业用途的源码在严格定义上属于 **source-available（公开源码）**，不属于允许任意商用的 OSI 开源许可。代码许可原文同步自 [PolyForm 官方 1.0.0 版本](https://github.com/polyformproject/polyform-licenses/blob/1.0.0/PolyForm-Noncommercial-1.0.0.md)，SPDX 标识为 `PolyForm-Noncommercial-1.0.0`。转载与署名细节见 [`NOTICE.md`](NOTICE.md)。
 
-本仓库内容：`README.md` 主教程 · `guide/` 排版版与微信客服双入口专题 · `code/` 可运行桥接代码 · `systemd/` 服务样例 · `tests/` 离线回归测试 · `.env.example` 配置模板。
+本仓库内容：`README.md` 主教程 · `guide/` 排版版、微信客服双入口专题与迷你应用专题 · `code/` 可运行桥接代码与迷你应用参考实现 · `systemd/` 服务样例 · `tests/` 离线回归测试 · `.env.example` 配置模板。
 
 ## v1.1.0 · 应用与微信客服共用一个 Agent
 
@@ -43,6 +43,26 @@ python -m unittest discover -s tests -v
 消融明细与对应失败场景见 [`tests/ABLATION.md`](tests/ABLATION.md)。`tests/test_ablations.py` 会在临时副本里逐项移除签名、CorpID、AgentID、XML 防护、持久去重、目标白名单、客户绑定、五格预算、来源路由、待发回复与分片进度共 11 项保护；每次消融都必须让对应回归测试失败，避免“代码看起来有门，测试其实没守住”。
 
 部署前复制 `.env.example` 到服务器的 mode-600 环境文件，按 [`SECURITY.md`](SECURITY.md) 收紧回调、白名单、队列与 Agent 权限；生产服务样例在 [`systemd/`](systemd/)。原版粉色 v1.0.0 PDF 保存在 [`guide/archive/`](guide/archive/)，其中嵌入的旧代码仅作版式存档，部署一律使用当前 `code/`。
+
+## v1.2.0 · 迷你应用：把观察页挂进微信底部菜单
+
+聊天之外，你往往还想在微信里随手看一眼服务器上的东西：进程在不在、日志尾部、某个长进程的终端画面。真正的小程序对个人开发者有两堵墙（请求域名必须 ICP 备案；个人主体不能用 `web-view`，企业主体要营业执照）。企业微信自建应用没有这两条限制：把你服务器上的一张网页设成**应用主页**、**底部菜单**，再发一张**卡片**，微信插件会把菜单和卡片原样端进个人微信，一按就开，用起来像一个小程序。
+
+```text
+个人微信 ─ 底部菜单 / 卡片 ─┐
+企业微信 ─ 应用主页        ─┼─> https://bot.example.com/mini?k=<MINI_APP_TOKEN>
+                            │      ├─ /mini              静态页面
+                            │      ├─ /api/mini/status   列表 JSON
+                            │      └─ /api/mini/stream   SSE 实时流
+                            └─ 钥匙只开 /api/mini/*，其余路径一律 401
+```
+
+- 页面与接口都跑在现有机器人服务器上，同源，不需要 CORS，也不需要新域名。
+- 钥匙是独立的一把，只认 `/api/mini/` 前缀；链接泄露也打不开服务器上别的门。换钥匙改一行环境变量、重跑一次配置脚本。
+- 底部菜单与卡片在个人微信里已验证可见；应用主页在企业微信客户端里生效。
+
+专题教程：[Markdown](guide/迷你应用.md) · [HTML](guide/迷你应用.html) · [PDF](guide/迷你应用.pdf)
+参考实现：[`code/mini_app_server.py`](code/mini_app_server.py) · [`code/mini_app_page.html`](code/mini_app_page.html) · [`code/mini_app_setup.sh`](code/mini_app_setup.sh) · 测试 [`tests/test_mini_app.py`](tests/test_mini_app.py)
 
 ## 目录
 - 00 · 原理总览：这条路为什么能通

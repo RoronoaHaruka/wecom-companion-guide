@@ -1,0 +1,815 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Roronoa & Haruka · Documentation licensed CC BY-NC-SA 4.0 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>迷你应用</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f3f8fb;
+  --surface: #fbfdff;
+  --surface-2: #eaf2f7;
+  --ink: #13243a;
+  --ink-soft: #52677d;
+  --muted: #74879a;
+  --line: #cad9e4;
+  --line-strong: #9db4c4;
+  --cyan: #00aabc;
+  --cyan-deep: #007987;
+  --cyan-wash: #d9f5f6;
+  --coral: #ef675c;
+  --coral-deep: #b9443d;
+  --coral-wash: #ffe4df;
+  --code-bg: #101d2b;
+  --code-ink: #d8e9f1;
+  --code-muted: #7893a5;
+  --success: #248a70;
+  --warning: #bd633f;
+  --shadow: 0 18px 60px rgba(19, 36, 58, .10);
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09131e;
+    --surface: #0e1b29;
+    --surface-2: #142637;
+    --ink: #e8f3f8;
+    --ink-soft: #a8bdca;
+    --muted: #7f98a8;
+    --line: #294052;
+    --line-strong: #426276;
+    --cyan: #42d4df;
+    --cyan-deep: #79e5ec;
+    --cyan-wash: #12363e;
+    --coral: #ff8177;
+    --coral-deep: #ffaaa3;
+    --coral-wash: #412825;
+    --code-bg: #06101a;
+    --code-ink: #d8e9f1;
+    --code-muted: #7893a5;
+    --success: #64c3a7;
+    --warning: #ef9b78;
+    --shadow: 0 24px 80px rgba(0, 0, 0, .28);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #09131e;
+  --surface: #0e1b29;
+  --surface-2: #142637;
+  --ink: #e8f3f8;
+  --ink-soft: #a8bdca;
+  --muted: #7f98a8;
+  --line: #294052;
+  --line-strong: #426276;
+  --cyan: #42d4df;
+  --cyan-deep: #79e5ec;
+  --cyan-wash: #12363e;
+  --coral: #ff8177;
+  --coral-deep: #ffaaa3;
+  --coral-wash: #412825;
+  --code-bg: #06101a;
+  --code-ink: #d8e9f1;
+  --code-muted: #7893a5;
+  --success: #64c3a7;
+  --warning: #ef9b78;
+  --shadow: 0 24px 80px rgba(0, 0, 0, .28);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+a { color: var(--cyan-deep); text-underline-offset: .22em; }
+a:hover { color: var(--coral-deep); }
+button, input { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--cyan) 48%, transparent);
+  outline-offset: 3px;
+}
+::selection { background: var(--cyan-wash); color: var(--ink); }
+.progress {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: var(--read-progress, 0%);
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--coral));
+  z-index: 20;
+}
+.shell {
+  width: min(1320px, calc(100% - 40px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: clamp(36px, 6vw, 92px);
+}
+.side {
+  position: sticky;
+  top: 26px;
+  align-self: start;
+  height: calc(100vh - 52px);
+  padding: 26px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.brand {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  position: relative;
+}
+.brand-mark::before,
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  width: 28px;
+  height: 9px;
+  border: 2px solid var(--line-strong);
+  border-radius: 99px;
+}
+.brand-mark::before { top: 4px; border-color: var(--cyan); }
+.brand-mark::after { bottom: 4px; border-color: var(--coral); }
+.brand-mark span {
+  position: absolute;
+  width: 2px;
+  height: 16px;
+  background: var(--ink);
+  left: 16px;
+  top: 9px;
+}
+.brand strong { font-size: 14px; letter-spacing: .08em; }
+.brand small { display: block; color: var(--muted); font: 11px/1.4 var(--mono); margin-top: 2px; }
+.nav {
+  display: grid;
+  gap: 5px;
+  margin-top: 50px;
+}
+.nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-left: 2px solid transparent;
+}
+.nav a:hover, .nav a.active { color: var(--ink); border-left-color: var(--cyan); background: linear-gradient(90deg, var(--cyan-wash), transparent 80%); }
+.side-note { color: var(--muted); font: 11px/1.7 var(--mono); padding-right: 18px; }
+.main { min-width: 0; padding: 34px 0 100px; }
+.hero {
+  min-height: 610px;
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(400px, 1.1fr);
+  align-items: center;
+  gap: clamp(30px, 5vw, 80px);
+  border-bottom: 1px solid var(--line);
+  padding: 50px 0 70px;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--cyan-deep);
+  font: 600 11px/1 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--cyan); }
+h1 {
+  font: 900 clamp(50px, 7vw, 92px)/1.02 var(--serif);
+  letter-spacing: -.055em;
+  margin: 22px 0 24px;
+  text-wrap: balance;
+}
+.hero-lede {
+  max-width: 38em;
+  color: var(--ink-soft);
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.9;
+}
+.hero-lede strong { color: var(--ink); }
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-top: 34px;
+  color: var(--muted);
+  font: 12px/1.5 var(--mono);
+}
+.hero-meta span::before { content: "// "; color: var(--coral); }
+.route-stage {
+  position: relative;
+  min-height: 450px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    repeating-linear-gradient(90deg, transparent 0 27px, color-mix(in srgb, var(--line) 45%, transparent) 28px) border-box;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  overflow: hidden;
+}
+.route-stage::after {
+  content: "LIVE ROUTE";
+  position: absolute;
+  right: 20px;
+  top: 16px;
+  color: var(--muted);
+  font: 10px/1 var(--mono);
+  letter-spacing: .12em;
+}
+.trace {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 54px 1.12fr 54px 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 18px 0;
+  align-items: center;
+  padding-top: 22px;
+}
+.node {
+  position: relative;
+  background: var(--surface-2);
+  border-top: 3px solid var(--line-strong);
+  padding: 18px 16px;
+  min-height: 98px;
+}
+.node.input-kf { grid-column: 1; grid-row: 1; border-color: var(--cyan); }
+.node.input-app { grid-column: 1; grid-row: 2; border-color: var(--coral); }
+.node.core {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  min-height: 205px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
+.node.output-kf { grid-column: 5; grid-row: 1; border-color: var(--cyan); }
+.node.output-app { grid-column: 5; grid-row: 2; border-color: var(--coral); }
+.wire.in-one { grid-column: 2; grid-row: 1; }
+.wire.in-two { grid-column: 2; grid-row: 2; }
+.wire.out-one { grid-column: 4; grid-row: 1; }
+.wire.out-two { grid-column: 4; grid-row: 2; }
+.node small { display: block; color: var(--muted); font: 10px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.node.core small { color: color-mix(in srgb, var(--surface) 58%, transparent); }
+.node b { display: block; margin-top: 9px; font-size: 15px; line-height: 1.45; }
+.node code { display: block; color: var(--ink-soft); font: 10px/1.5 var(--mono); margin-top: 7px; white-space: nowrap; }
+.node.core code { color: var(--cyan); }
+.wire { height: 2px; background: var(--line-strong); position: relative; }
+.wire.cyan { background: var(--cyan); color: var(--cyan); }
+.wire.coral { background: var(--coral); color: var(--coral); }
+.wire::after { content: ""; position: absolute; right: -2px; top: -4px; width: 8px; height: 8px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
+.packet { position: absolute; width: 9px; height: 9px; border: 2px solid currentColor; background: var(--surface); border-radius: 50%; top: -4px; left: 0; animation: packet 2.8s ease-in-out infinite; }
+@keyframes packet { 0%, 12% { left: 0; } 78%, 100% { left: calc(100% - 8px); } }
+.thesis {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+}
+.thesis-item { padding: 30px 28px 34px 0; border-right: 1px solid var(--line); }
+.thesis-item + .thesis-item { padding-left: 28px; }
+.thesis-item:last-child { border-right: 0; }
+.thesis strong { font: 700 16px/1.5 var(--serif); }
+.thesis p { color: var(--ink-soft); font-size: 13px; margin: 10px 0 0; }
+.section { padding: 82px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 20px; }
+.section-head {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 34px;
+  margin-bottom: 42px;
+}
+.kicker { color: var(--coral-deep); font: 600 11px/1.4 var(--mono); letter-spacing: .11em; text-transform: uppercase; padding-top: 10px; }
+h2 { font: 800 clamp(30px, 4vw, 52px)/1.2 var(--serif); letter-spacing: -.035em; margin: 0; text-wrap: balance; }
+.section-intro { max-width: 45em; color: var(--ink-soft); font-size: 16px; margin: 18px 0 0; }
+h3 { font: 700 22px/1.4 var(--serif); margin: 0; }
+p { margin: 0; }
+.callout {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 20px;
+  margin: 30px 0;
+  padding: 22px 0;
+  border-block: 1px solid var(--line);
+}
+.callout::before { content: ""; background: linear-gradient(var(--cyan) 0 50%, var(--coral) 50% 100%); }
+.callout b { display: block; margin-bottom: 6px; }
+.callout p { color: var(--ink-soft); }
+.arch-tabs { margin-top: 38px; }
+.tab-list { display: flex; gap: 8px; border-bottom: 1px solid var(--line); }
+.tab-button {
+  border: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  padding: 12px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cyan); }
+.tab-panel { padding: 34px 0 0; }
+.arch-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 34px;
+  align-items: stretch;
+}
+.arch-rule { background: var(--line); }
+.arch-column { display: grid; align-content: start; gap: 16px; }
+.arch-column p { color: var(--ink-soft); }
+.route-list { display: grid; gap: 8px; font: 12px/1.55 var(--mono); }
+.route-row { display: grid; grid-template-columns: minmax(120px, .8fr) 24px minmax(130px, 1fr); align-items: center; gap: 7px; padding: 10px 12px; background: var(--surface-2); }
+.route-row .arrow { color: var(--coral); text-align: center; }
+.steps { counter-reset: step; display: grid; }
+.step {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 28px;
+  padding: 34px 0;
+  border-top: 1px solid var(--line);
+}
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step::before {
+  content: "0" counter(step);
+  color: var(--cyan-deep);
+  font: 600 18px/1 var(--mono);
+  padding-top: 8px;
+}
+.step-body { display: grid; gap: 13px; max-width: 54em; }
+.step-body p, .step-body li { color: var(--ink-soft); }
+.inline-path { display: inline-block; color: var(--ink); background: var(--surface-2); padding: 4px 9px; font: 12px/1.5 var(--mono); }
+.flow-table { overflow-x: auto; border-block: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; min-width: 720px; }
+th, td { text-align: left; padding: 16px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font: 600 10px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+td { color: var(--ink-soft); font-size: 14px; }
+td code { color: var(--ink); font: 12px var(--mono); }
+.message-anatomy { display: grid; grid-template-columns: minmax(0, .88fr) minmax(380px, 1.12fr); gap: 46px; align-items: start; }
+.anatomy-copy { display: grid; gap: 22px; }
+.anatomy-copy p { color: var(--ink-soft); }
+.data-stack { border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+.data-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.data-row:last-child { border-bottom: 0; }
+.data-row dt, .data-row dd { margin: 0; padding: 13px 15px; }
+.data-row dt { background: var(--surface-2); color: var(--cyan-deep); font: 600 11px/1.5 var(--mono); }
+.data-row dd { color: var(--ink-soft); font-size: 13px; overflow-wrap: anywhere; }
+.code-workbench {
+  background: var(--code-bg);
+  color: var(--code-ink);
+  box-shadow: var(--shadow);
+  border-top: 4px solid var(--cyan);
+  overflow: hidden;
+}
+.code-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.code-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.code-tab { border: 0; background: transparent; color: var(--code-muted); padding: 7px 10px; cursor: pointer; font: 11px/1 var(--mono); }
+.code-tab[aria-selected="true"] { color: var(--code-ink); background: rgba(255,255,255,.08); }
+.copy-button { border: 1px solid rgba(255,255,255,.18); color: var(--code-ink); background: transparent; padding: 7px 10px; cursor: pointer; font: 10px/1 var(--mono); }
+.code-panel { max-height: 680px; overflow: auto; }
+pre { margin: 0; }
+.code-panel pre { padding: 22px; min-width: 760px; }
+code { font-family: var(--mono); }
+.code-panel code { font: 12px/1.72 var(--mono); white-space: pre; color: var(--code-ink); }
+.code-panel .comment { color: #7295a7; }
+.code-panel .accent { color: #4bd7df; }
+.code-panel .warm { color: #ff948c; }
+details.code-details { margin-top: 28px; border-block: 1px solid var(--line); }
+details.code-details summary { cursor: pointer; padding: 17px 0; font-weight: 700; }
+details.code-details p { color: var(--ink-soft); padding-bottom: 18px; }
+.check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; }
+.check-item { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 16px 0; border-top: 1px solid var(--line); }
+.check-item input { width: 18px; height: 18px; accent-color: var(--cyan); margin-top: 5px; }
+.check-item label { cursor: pointer; }
+.check-item label span { color: var(--ink-soft); display: block; font-size: 13px; margin-top: 3px; }
+.error-list { border-top: 1px solid var(--line); }
+.error-row { display: grid; grid-template-columns: 150px 1fr 1.1fr; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.error-code { color: var(--coral-deep); font: 600 12px/1.5 var(--mono); }
+.error-row p { color: var(--ink-soft); font-size: 14px; }
+.security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 44px; }
+.security-item { padding-top: 18px; border-top: 3px solid var(--line-strong); }
+.security-item:nth-child(odd) { border-color: var(--cyan); }
+.security-item:nth-child(even) { border-color: var(--coral); }
+.security-item p { color: var(--ink-soft); margin-top: 8px; }
+.docs { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.doc-link { display: grid; grid-template-columns: 160px minmax(0,1fr) 24px; gap: 20px; align-items: center; padding: 17px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.doc-link span { color: var(--muted); font: 11px/1.4 var(--mono); }
+.doc-link code { color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.doc-link b { color: var(--coral); }
+.footer { padding: 72px 0 20px; }
+.footer-axiom { font: 800 clamp(28px, 4vw, 48px)/1.35 var(--serif); max-width: 18em; text-wrap: balance; }
+.footer-axiom .cyan { color: var(--cyan-deep); }
+.footer-axiom .coral { color: var(--coral-deep); }
+.footer small { display: block; margin-top: 24px; color: var(--muted); font: 11px/1.6 var(--mono); }
+.footer small a { color: inherit; }
+[hidden] { display: none !important; }
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: 1fr; width: min(100% - 30px, 860px); }
+  .side { position: static; height: auto; padding: 20px 0 0; flex-direction: row; align-items: center; }
+  .nav, .side-note { display: none; }
+  .main { padding-top: 0; }
+  .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 45px; }
+  .route-stage { min-height: 420px; }
+  .section-head { grid-template-columns: 1fr; gap: 8px; }
+  .kicker { padding: 0; }
+  .message-anatomy { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .shell { width: min(100% - 22px, 680px); }
+  .hero { padding: 34px 0 48px; }
+  h1 { font-size: clamp(48px, 18vw, 72px); }
+  .trace { grid-template-columns: 1fr 30px 1.15fr; grid-template-rows: auto auto auto auto; gap: 12px 0; }
+  .node.core { grid-column: 3; grid-row: 1 / 3; min-height: 190px; }
+  .node.output-kf { grid-column: 1; grid-row: 3; }
+  .node.output-app { grid-column: 1; grid-row: 4; }
+  .wire.out-one { grid-column: 2; grid-row: 3; transform: scaleX(-1); }
+  .wire.out-two { grid-column: 2; grid-row: 4; transform: scaleX(-1); }
+  .node { min-height: 86px; padding: 14px 12px; }
+  .thesis { grid-template-columns: 1fr; }
+  .thesis-item, .thesis-item + .thesis-item { padding: 22px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .section { padding: 58px 0; }
+  .arch-compare { grid-template-columns: 1fr; }
+  .arch-rule { height: 1px; }
+  .step { grid-template-columns: 54px 1fr; gap: 16px; }
+  .check-grid, .security-grid { grid-template-columns: 1fr; }
+  .error-row { grid-template-columns: 1fr; gap: 7px; }
+  .doc-link { grid-template-columns: 1fr 20px; gap: 4px 14px; }
+  .doc-link span { grid-column: 1; }
+  .doc-link code { grid-column: 1; }
+  .doc-link b { grid-column: 2; grid-row: 1 / 3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .packet { animation: none; left: calc(100% - 8px); }
+}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  :root {
+    --bg: #f3f8fb;
+    --surface: #fbfdff;
+    --surface-2: #eaf2f7;
+    --ink: #13243a;
+    --ink-soft: #52677d;
+    --muted: #74879a;
+    --line: #cad9e4;
+    --line-strong: #9db4c4;
+    --cyan: #00aabc;
+    --cyan-deep: #007987;
+    --cyan-wash: #d9f5f6;
+    --coral: #ef675c;
+    --coral-deep: #b9443d;
+    --coral-wash: #ffe4df;
+    --code-bg: #101d2b;
+    --code-ink: #d8e9f1;
+    --code-muted: #7893a5;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: var(--bg); font-size: 10.5pt; }
+  .progress, .side, .copy-button { display: none !important; }
+  .shell { display: block; width: auto; margin: 0; }
+  .main { padding: 0; }
+  .hero { min-height: 0; grid-template-columns: 1fr; gap: 24px; padding: 18px 0 28px; }
+  h1 { font-size: 54pt; }
+  .route-stage { min-height: 360px; box-shadow: none; }
+  .thesis-item { padding-top: 22px; padding-bottom: 22px; }
+  .section { padding: 34px 0; }
+  .section-head { margin-bottom: 24px; break-after: avoid-page; }
+  h2 { font-size: 27pt; }
+  h3 { font-size: 16pt; }
+  .tab-list, .code-tabs { display: none !important; }
+  .tab-panel[hidden], .code-panel[hidden] { display: block !important; }
+  .tab-panel { padding-top: 22px; }
+  .tab-panel + .tab-panel { border-top: 1px solid var(--line); margin-top: 22px; }
+  .flow-table { overflow: visible; }
+  table { min-width: 0; table-layout: fixed; }
+  th, td { padding: 10px 8px; overflow-wrap: anywhere; }
+  .message-anatomy { grid-template-columns: 1fr; gap: 22px; }
+  .code-workbench { overflow: visible; box-shadow: none; }
+  .code-toolbar { display: none; }
+  .code-panel { max-height: none; overflow: visible; break-before: page; }
+  .code-panel::before {
+    content: attr(data-print-label);
+    display: block;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    color: var(--code-muted);
+    font: 9pt/1 var(--mono);
+  }
+  .code-panel pre { min-width: 0; padding: 16px; }
+  .code-panel code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 7.5pt; line-height: 1.48; }
+  details.code-details { break-inside: avoid; }
+  details.code-details > p { display: block !important; }
+  .step, .callout, .data-stack, .check-item, .error-row, .security-item, .doc-link { break-inside: avoid; }
+  .footer { break-before: auto; break-inside: avoid; padding-top: 42px; }
+}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+<div class="shell">
+  <aside class="side">
+    <div>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div><strong>迷你应用</strong><small>WECHAT → YOUR PAGE</small></div>
+      </div>
+      <nav class="nav" aria-label="章节导航">
+        <a href="#principle">为什么能通</a>
+        <a href="#structure">结构</a>
+        <a href="#key">钥匙</a>
+        <a href="#page">页面</a>
+        <a href="#wecom">接进企业微信</a>
+        <a href="#verification">验收</a>
+        <a href="#errors">断点</a>
+        <a href="#security">边界</a>
+      </nav>
+    </div>
+    <div class="side-note">ONE PAGE<br>ONE SCOPED KEY<br>NO ICP · NO LICENCE</div>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">WeCom Mini App Pattern</div>
+        <h1>迷你<br>应用</h1>
+        <p class="hero-lede">把你服务器上的一张网页挂进企业微信自建应用的<strong>主页</strong>与<strong>底部菜单</strong>，微信插件把它原样端进个人微信。一按就开，用起来像小程序，却不需要 ICP 备案的域名，也不需要营业执照。</p>
+        <div class="hero-meta">
+          <span>不需要小程序账号</span>
+          <span>钥匙只开一组接口</span>
+          <span>底部菜单已在个人微信验证</span>
+        </div>
+      </div>
+      <div class="code-workbench" aria-label="链路总览">
+        <div class="code-toolbar">
+          <div class="code-tabs" role="tablist"><button class="code-tab" role="tab" aria-selected="true" aria-controls="code-overview">overview</button></div>
+          <button class="copy-button" type="button">COPY</button>
+        </div>
+        <div class="code-panel" id="code-overview" role="tabpanel"><pre><code>个人微信 ─ 底部菜单「面板」──┐
+个人微信 ─ 卡片「打开」  ───┼─&gt; https://bot.example.com/mini?k=&lt;MINI_APP_TOKEN&gt;
+企业微信 ─ 应用主页      ───┘            │
+                                          ├─ GET  /mini              静态页面
+                                          ├─ GET  /api/mini/status   列表 JSON
+                                          └─ GET  /api/mini/stream   SSE 实时流
+                                   只有 /api/mini/* 认这把钥匙，其余路径一律 401</code></pre></div>
+      </div>
+    </header>
+
+    <div class="thesis" aria-label="方案摘要">
+      <div class="thesis-item"><strong>企业微信负责「入口」</strong><p>应用主页、底部菜单、卡片消息接受任意 HTTPS 链接。三处指向同一张页面。</p></div>
+      <div class="thesis-item"><strong>你的服务器负责「内容」</strong><p>一张静态 HTML 加两个同源 JSON 接口。列表、详情、实时流全在里面。</p></div>
+      <div class="thesis-item"><strong>钥匙负责「不越界」</strong><p>独立的一把钥匙只认 <code>/api/mini/</code> 前缀。链接泄露也打不开别的门。</p></div>
+    </div>
+
+    <section class="section" id="principle">
+      <div class="section-head">
+        <div class="kicker">01 / Principle</div>
+        <div><h2>小程序有两堵墙，自建应用一堵都没有</h2><p class="section-intro">微信小程序能请求的域名必须完成 ICP 备案；个人主体不能使用 <code>web-view</code>，企业主体又要营业执照。企业微信自建应用的主页、菜单和卡片对链接没有这些要求，域名照旧走主教程第三步配好的隧道。</p></div>
+      </div>
+      <div class="callout"><div><b>你得到的是什么。</b><p>在个人微信里点开机器人的会话，输入框左侧多出一个菜单；按一下，微信自带的浏览器打开你服务器上的页面。进程观察窗、状态面板、日志尾部、遥控器，都可以是这张页面。本文把它叫做迷你应用。</p></div></div>
+    </section>
+
+    <section class="section" id="structure">
+      <div class="section-head">
+        <div class="kicker">02 / Structure</div>
+        <div><h2>三样东西，一把钥匙</h2><p class="section-intro">全部跑在现有机器人服务器上。同源，所以不需要 CORS，<code>EventSource</code> 也能直接用。</p></div>
+      </div>
+      <dl class="data-stack" aria-label="部件">
+        <div class="data-row"><dt>PAGE</dt><dd><a href="../code/mini_app_page.html">code/mini_app_page.html</a> · 路径 <code>/mini</code>。钥匙引导、列表、详情、实时流、暂停恢复，全部内联，没有外部依赖</dd></div>
+        <div class="data-row"><dt>API</dt><dd><code>/api/mini/status</code> 返回列表 JSON，<code>/api/mini/stream</code> 是 SSE 实时流。参考实现 <a href="../code/mini_app_server.py">code/mini_app_server.py</a>，标准库</dd></div>
+        <div class="data-row"><dt>KEY</dt><dd>环境变量 <code>MINI_APP_TOKEN</code>，mode 600 文件。只在路径以 <code>/api/mini/</code> 开头时才认</dd></div>
+        <div class="data-row"><dt>WECOM</dt><dd><a href="../code/mini_app_setup.sh">code/mini_app_setup.sh</a> · 三次 API 调用把链接写进应用主页、底部菜单与一张卡片</dd></div>
+        <div class="data-row"><dt>TEST</dt><dd><a href="../tests/test_mini_app.py">tests/test_mini_app.py</a> · 正确钥匙敲别的路径必须失败</dd></div>
+      </dl>
+    </section>
+
+    <section class="section" id="key">
+      <div class="section-head">
+        <div class="kicker">03 / Key</div>
+        <div><h2>钥匙只开一小块</h2><p class="section-intro">链接会被存进腾讯侧的菜单配置和聊天记录里，所以链接里的钥匙必须只能打开这一组接口。规则只有一条：从 <code>?auth=</code> 或 <code>Authorization: Bearer</code> 取钥匙，恒定时间比较，且只在路径以 <code>/api/mini/</code> 开头时才认。</p></div>
+      </div>
+      <div class="code-workbench">
+        <div class="code-toolbar">
+          <div class="code-tabs" role="tablist">
+            <button class="code-tab" role="tab" aria-selected="true" aria-controls="code-key-py">python</button>
+            <button class="code-tab" role="tab" aria-selected="false" aria-controls="code-key-js">node / express</button>
+          </div>
+          <button class="copy-button" type="button">COPY</button>
+        </div>
+        <div class="code-panel" id="code-key-py" role="tabpanel"><pre><code>import hmac
+
+API_PREFIX = "/api/mini/"
+
+def is_scoped_request(path: str, presented: str, expected: str) -&gt; bool:
+    """Only paths under API_PREFIX accept the mini-app token."""
+    if not expected or not presented:
+        return False
+    if not path.startswith(API_PREFIX):
+        return False
+    return hmac.compare_digest(presented.encode("utf-8"), expected.encode("utf-8"))</code></pre></div>
+        <div class="code-panel" id="code-key-js" role="tabpanel" hidden><pre><code>const crypto = require("crypto");
+const MINI_APP_TOKEN = process.env.MINI_APP_TOKEN || "";
+
+function safeEqual(a, b) {
+  const x = crypto.createHash("sha256").update(String(a)).digest();
+  const y = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(x, y);
+}
+
+function miniAppAuth(req, res, next) {
+  const presented = (typeof req.query.auth === "string" &amp;&amp; req.query.auth) ||
+    (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  const scoped = req.path.startsWith("/api/mini/");
+  if (MINI_APP_TOKEN &amp;&amp; scoped &amp;&amp; safeEqual(presented, MINI_APP_TOKEN)) return next();
+  return res.status(401).json({ error: "unauthorized" });
+}
+
+app.get("/mini", (req, res) =&gt; res.sendFile(path.join(__dirname, "mini_app_page.html")));
+app.get("/api/mini/status", miniAppAuth, (req, res) =&gt; res.json({ items: loadStatus() }));</code></pre></div>
+      </div>
+      <div class="callout" style="margin-top:24px"><div><b>如果接口里有会动手的操作。</b><p>只读的观察页用一把钥匙足够。一旦 <code>/api/mini/</code> 下面出现重启进程、发送按键这类会改变服务器状态的接口，拿到链接的人也能按这些按钮。至少做到危险操作二次确认、每次调用记日志；更稳的做法是把动手类接口放到另一把钥匙后面，不写进任何链接。生成钥匙用 <code>openssl rand -hex 24</code>；换钥匙改一行、重启服务、重跑配置脚本，旧链接立刻失效。</p></div></div>
+    </section>
+
+    <section class="section" id="page">
+      <div class="section-head">
+        <div class="kicker">04 / Page</div>
+        <div><h2>页面第一次打开时把钥匙收好</h2><p class="section-intro">链接带着 <code>?k=</code> 来一次，页面存进 <code>localStorage</code>，之后每次请求拼成 <code>?auth=</code>，地址栏擦干净。微信内置浏览器对同一域名的本地存储是持久的。</p></div>
+      </div>
+      <div class="steps">
+        <article class="step"><div class="step-body"><h3>读钥匙</h3><p>从 <code>location.search</code> 读 <code>k</code>，同时兼容 <code>#k=</code>。没有就看 <code>localStorage</code>；两处都空，显示一个输入框让人粘贴。</p></div></article>
+        <article class="step"><div class="step-body"><h3>擦地址栏</h3><p><code>history.replaceState</code> 把地址换成干净的 <code>/mini</code>。截图、分享、浮窗里都不再带钥匙。</p></div></article>
+        <article class="step"><div class="step-body"><h3>带钥匙请求</h3><p><code>fetch</code> 与 <code>EventSource</code> 都用 <code>?auth=</code>。<code>EventSource</code> 不能自定义请求头，这也是服务端同时接受查询参数与 Bearer 头的原因。</p></div></article>
+        <article class="step"><div class="step-body"><h3>401 就回到输入框</h3><p>钥匙换了、本地存储被清了，页面清空旧钥匙回到引导页。从菜单再点一次，链接自带的 <code>?k=</code> 会重新引导。</p></div></article>
+      </div>
+      <div class="callout" style="margin-top:24px"><div><b>用查询参数，不要用井号。</b><p>微信打开卡片和菜单链接时可能丢掉 <code>#</code> 后面的片段。参考页面两种都认，但写进企业微信的链接一律用 <code>?k=</code>。</p></div></div>
+    </section>
+
+    <section class="section" id="wecom">
+      <div class="section-head">
+        <div class="kicker">05 / WeCom</div>
+        <div><h2>三次调用，把链接写进腾讯侧</h2><p class="section-intro"><code>CORP_ID</code> 与 <code>APP_SECRET</code> 来自主教程第一、二步，<code>AGENT_ID</code> 是自建应用的数字 ID，<code>USER_ID</code> 是你自己的成员账号，<code>PAGE_URL</code> 形如 <code>https://bot.example.com/mini?k=&lt;MINI_APP_TOKEN&gt;</code>。三次都以 <code>"errcode": 0</code> 为准。</p></div>
+      </div>
+      <div class="code-workbench">
+        <div class="code-toolbar">
+          <div class="code-tabs" role="tablist">
+            <button class="code-tab" role="tab" aria-selected="true" aria-controls="code-wc-token">gettoken</button>
+            <button class="code-tab" role="tab" aria-selected="false" aria-controls="code-wc-home">agent/set</button>
+            <button class="code-tab" role="tab" aria-selected="false" aria-controls="code-wc-menu">menu/create</button>
+            <button class="code-tab" role="tab" aria-selected="false" aria-controls="code-wc-card">textcard</button>
+          </div>
+          <button class="copy-button" type="button">COPY</button>
+        </div>
+        <div class="code-panel" id="code-wc-token" role="tabpanel"><pre><code>curl -s "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${CORP_ID}&amp;corpsecret=${APP_SECRET}"
+# access_token 两小时有效，长进程里要缓存复用</code></pre></div>
+        <div class="code-panel" id="code-wc-home" role="tabpanel" hidden><pre><code>curl -s -X POST "https://qyapi.weixin.qq.com/cgi-bin/agent/set?access_token=${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"agentid\": ${AGENT_ID}, \"home_url\": \"${PAGE_URL}\"}"</code></pre></div>
+        <div class="code-panel" id="code-wc-menu" role="tabpanel" hidden><pre><code>curl -s -X POST "https://qyapi.weixin.qq.com/cgi-bin/menu/create?access_token=${ACCESS_TOKEN}&amp;agentid=${AGENT_ID}" \
+  -H "Content-Type: application/json" \
+  -d "{\"button\": [{\"type\": \"view\", \"name\": \"面板\", \"url\": \"${PAGE_URL}\"}]}"
+# 顶级按钮名称限 16 字节，大约五个汉字</code></pre></div>
+        <div class="code-panel" id="code-wc-card" role="tabpanel" hidden><pre><code>curl -s -X POST "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"touser\": \"${USER_ID}\", \"msgtype\": \"textcard\", \"agentid\": ${AGENT_ID},
+       \"textcard\": {\"title\": \"面板\", \"description\": \"点开就是。长按可以收进浮窗。\",
+                      \"url\": \"${PAGE_URL}\", \"btntxt\": \"打开\"}}"</code></pre></div>
+      </div>
+      <dl class="data-stack" style="margin-top:28px" aria-label="微信里长什么样">
+        <div class="data-row"><dt>MENU</dt><dd>个人微信里点开机器人会话，输入框左侧的菜单图标展开就是你的按钮。已验证可见，也是日常最顺手的入口</dd></div>
+        <div class="data-row"><dt>CARD</dt><dd>出现在会话流里，标题、描述、「打开」按钮。长按打开的页面可以收进微信浮窗</dd></div>
+        <div class="data-row"><dt>HOME</dt><dd>在企业微信客户端的工作台与应用页里生效。微信插件侧是否展示未验证，不要依赖它</dd></div>
+        <div class="data-row"><dt>NOTICE</dt><dd>个别域名首次打开会看到「非微信官方网页」的提示，点继续即可，不影响功能</dd></div>
+      </dl>
+    </section>
+
+    <section class="section" id="verification">
+      <div class="section-head">
+        <div class="kicker">06 / Verify</div>
+        <div><h2>接口说 OK 还不够，手机里真的出现才算通</h2><p class="section-intro">先在桌面浏览器直接打开 <code>PAGE_URL</code> 确认页面本身能出来，再到微信里逐项勾。</p></div>
+      </div>
+      <div class="check-grid" id="checklist">
+        <div class="check-item"><input type="checkbox" id="c1"><label for="c1">桌面浏览器能打开页面<span>列表出来了，地址栏里的 <code>?k=</code> 已经被擦掉。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c2"><label for="c2">底部菜单在个人微信里可见<span>点开机器人会话，输入框左侧有菜单，按下去页面打开。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c3"><label for="c3">卡片能点开<span>「打开」按钮进入同一张页面，长按可收进浮窗。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c4"><label for="c4">实时流在动<span>点进一项，快照随内容变化刷新，切走再切回会自动重连。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c5"><label for="c5">钥匙越界被拒<span>用同一把钥匙请求 <code>/api/mini/</code> 之外的路径，返回 401。</span></label></div>
+        <div class="check-item"><input type="checkbox" id="c6"><label for="c6">换钥匙后旧链接失效<span>改环境变量、重启、重跑脚本，旧卡片打开是引导页，新菜单直接进。</span></label></div>
+      </div>
+    </section>
+
+    <section class="section" id="errors">
+      <div class="section-head">
+        <div class="kicker">07 / Diagnose</div>
+        <div><h2>七个最常见的断点</h2><p class="section-intro">先确认页面本身，再确认钥匙，最后才是微信侧。</p></div>
+      </div>
+      <div class="error-list">
+        <div class="error-row"><div class="error-code">BLANK</div><p>菜单点开是空白页或 404。</p><p><code>PAGE_PATH</code> 与链接不一致，或静态文件路径不对。先用桌面浏览器直接打开 <code>PAGE_URL</code>。</p></div>
+        <div class="error-row"><div class="error-code">SPINNING</div><p>页面出来了，列表一直转圈。</p><p>钥匙没进本地存储：链接用了 <code>#k=</code> 被微信丢了，改成 <code>?k=</code>；或 <code>MINI_APP_TOKEN</code> 为空，服务器对所有请求 401。</p></div>
+        <div class="error-row"><div class="error-code">401</div><p>电脑上正常，微信里 401。</p><p>微信内置浏览器的本地存储被清过。从菜单重新打开一次，链接自带钥匙。</p></div>
+        <div class="error-row"><div class="error-code">STREAM</div><p>实时流几秒后断。</p><p>中间的反向代理开了缓冲。SSE 响应加 <code>Cache-Control: no-cache</code> 与 <code>X-Accel-Buffering: no</code>，服务端每十五秒发一条注释行保活。</p></div>
+        <div class="error-row"><div class="error-code">40018</div><p><code>menu/create</code> 报名称错误。</p><p>顶级按钮名称超过 16 字节。缩短到五个汉字以内。</p></div>
+        <div class="error-row"><div class="error-code">60020</div><p>三次调用之一被拒。</p><p>服务器出口 IP 不在企业可信 IP 里，与主教程第九章处理方式相同。</p></div>
+        <div class="error-row"><div class="error-code">STALE</div><p>换了钥匙后菜单打不开。</p><p>只改了环境变量没重跑配置脚本，菜单里还是旧链接。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="security">
+      <div class="section-head">
+        <div class="kicker">08 / Boundary</div>
+        <div><h2>公开一张页面，收紧四条边</h2><p class="section-intro">这张页面会被微信浏览器缓存，也可能被截图。它能看到的东西，就是链接持有者能看到的东西。</p></div>
+      </div>
+      <div class="security-grid">
+        <div class="security-item"><h3>钥匙只开一小块</h3><p>只认 <code>/api/mini/</code>。把这条规则写成测试，正确钥匙敲别的路径必须失败。</p></div>
+        <div class="security-item"><h3>只绑本机</h3><p>服务绑定 <code>127.0.0.1</code>，通过隧道或反向代理对外，和主教程的回调服务一样。</p></div>
+        <div class="security-item"><h3>钥匙不进日志</h3><p>访问日志只记路径，不记查询串。参考实现的 <code>log_message</code> 就是这么写的。</p></div>
+        <div class="security-item"><h3>页面里没有私人信息</h3><p>名字、账号、路径、内部域名一律不写进页面。公开仓库只提交 <code>.env.example</code> 与占位链接。</p></div>
+        <div class="security-item"><h3>动手类接口另开一把钥匙</h3><p>重启、发键这类操作不要放在写进链接的那把钥匙后面。至少二次确认加日志。</p></div>
+        <div class="security-item"><h3>换钥匙是一行的事</h3><p>改 <code>MINI_APP_TOKEN</code>、重启、重跑 <code>mini_app_setup.sh</code>。菜单与主页立刻拿到新链接。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="docs">
+      <div class="section-head">
+        <div class="kicker">09 / Sources</div>
+        <div><h2>官方接口索引</h2><p class="section-intro">以企业微信当前文档与管理后台为准。</p></div>
+      </div>
+      <div class="docs">
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/90228" target="_blank" rel="noreferrer"><span>AGENT / SET</span><code>/document/path/90228</code></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/90231" target="_blank" rel="noreferrer"><span>MENU / CREATE</span><code>/document/path/90231</code></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/90236" target="_blank" rel="noreferrer"><span>MESSAGE / SEND</span><code>/document/path/90236</code></a>
+        <a class="doc-link" href="https://developer.work.weixin.qq.com/document/path/91039" target="_blank" rel="noreferrer"><span>GETTOKEN</span><code>/document/path/91039</code></a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-axiom"><span class="cyan">入口交给企业微信，</span><br><span class="coral">内容留在自己的服务器。</span><br>一把钥匙只开一扇小门。</div>
+      <small>© 2026 RORONOA &amp; HARUKA · DOCS <a href="../LICENSE">CC BY-NC-SA 4.0</a> · CODE <a href="../LICENSE-CODE">POLYFORM NONCOMMERCIAL 1.0.0</a> · PLACEHOLDER IDS ONLY · <a href="https://github.com/RoronoaHaruka/wecom-companion-guide">github.com/RoronoaHaruka/wecom-companion-guide</a></small>
+    </footer>
+  </main>
+</div>
+<script>
+(() => {
+  const root = document.documentElement;
+  const updateProgress = () => {
+    const max = root.scrollHeight - innerHeight;
+    root.style.setProperty('--read-progress', max > 0 ? `${Math.min(100, scrollY / max * 100)}%` : '100%');
+  };
+  addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
+
+  document.querySelectorAll('.code-workbench').forEach(bench => {
+    const tabs = [...bench.querySelectorAll('.code-tab')];
+    const copy = bench.querySelector('.copy-button');
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      tabs.forEach(item => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', selected ? 'true' : 'false');
+        bench.querySelector(`#${item.getAttribute('aria-controls')}`).hidden = !selected;
+      });
+      copy.textContent = 'COPY';
+    }));
+    copy.addEventListener('click', async () => {
+      const active = bench.querySelector('.code-tab[aria-selected="true"]');
+      const text = bench.querySelector(`#${active.getAttribute('aria-controls')} code`).innerText;
+      try { await navigator.clipboard.writeText(text); copy.textContent = 'COPIED'; }
+      catch { copy.textContent = 'SELECT'; }
+      setTimeout(() => copy.textContent = 'COPY', 1400);
+    });
+  });
+
+  document.querySelectorAll('#checklist input').forEach(input => {
+    try { input.checked = localStorage.getItem(`mini-app:${input.id}`) === '1'; } catch {}
+    input.addEventListener('change', () => {
+      try { localStorage.setItem(`mini-app:${input.id}`, input.checked ? '1' : '0'); } catch {}
+    });
+  });
+
+  const links = [...document.querySelectorAll('.nav a')];
+  const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(entries => {
+      entries.filter(e => e.isIntersecting).forEach(entry => {
+        links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    sections.forEach(section => observer.observe(section));
+  }
+})();
+</script>
+</body>
+</html>

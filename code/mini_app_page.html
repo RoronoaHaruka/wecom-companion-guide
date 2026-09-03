@@ -1,0 +1,189 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Roronoa & Haruka · From Raincove ♡ -->
+<!-- SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>面板</title>
+<style>
+:root{
+  --bg:#0f1216;--panel:#161b22;--line:#242c36;--ink:#e6e9ee;--dim:#8a94a3;--dimmer:#4b5563;
+  --accent:#3ddbc7;--mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  --sans:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overflow-x:hidden}
+[hidden]{display:none!important}
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
+.top h1{font-size:15px;font-weight:600;letter-spacing:.04em}
+.top button{background:none;border:1px solid var(--line);color:var(--dim);font-size:12px;padding:5px 10px;border-radius:6px}
+.list{padding:0 12px 24px}
+.row{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.row .name{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
+.row .meta{color:var(--dim);font-size:12px;margin-top:4px}
+.row .chev{color:var(--dimmer);font-size:16px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dimmer);flex:none}
+.dot.on{background:var(--accent)}
+.dot.busy{background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.empty{color:var(--dim);font-size:13px;padding:24px 16px;text-align:center}
+.key{padding:40px 24px;max-width:420px;margin:0 auto}
+.key p{color:var(--dim);font-size:13px;line-height:1.7;margin-bottom:14px}
+.key input{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-family:var(--mono);font-size:13px;padding:10px 12px;border-radius:8px}
+.key button{margin-top:12px;width:100%;background:var(--accent);color:#06211d;border:0;font-size:14px;font-weight:600;padding:11px;border-radius:8px}
+.pane{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column}
+.pane .bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.pane .bar button{background:none;border:1px solid var(--line);color:var(--dim);font-size:12px;padding:5px 9px;border-radius:6px}
+.pane .bar .title{flex:1;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.pane .bar .time{color:var(--dimmer);font-size:11px;font-family:var(--mono)}
+.term{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px}
+.term pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);white-space:pre-wrap;word-break:break-all}
+.term .note{color:var(--dim);font-size:12px}
+.foot{display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.foot button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:13px;padding:10px 0;border-radius:8px}
+.toast{position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#222a35;color:var(--ink);font-size:12px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<section id="keyScreen" class="key" hidden>
+  <p>这张页面需要一把钥匙。链接里通常自带；如果这里空着，把钥匙粘进来。</p>
+  <input id="keyInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="钥匙">
+  <button id="keySave">保存</button>
+</section>
+
+<section id="home" hidden>
+  <div class="top"><h1>面板</h1><button id="refresh">刷新</button></div>
+  <div class="list" id="list"><div class="empty">正在读取</div></div>
+</section>
+
+<section id="pane" class="pane" hidden>
+  <div class="bar">
+    <button id="back">返回</button>
+    <div class="title"><span class="dot" id="paneDot"></span><span id="paneName"></span></div>
+    <span class="time" id="paneTime"></span>
+  </div>
+  <div class="term" id="term"><pre id="pre"></pre><div class="note" id="note">正在连上</div></div>
+  <div class="foot"><button id="fontMinus">字小</button><button id="fontPlus">字大</button><button id="toBottom">回到底部</button></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var API = "/api/mini/";          // keep in sync with API_PREFIX on the server
+  var KEY = "mini_app_key";        // localStorage slot for the token
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { key: "", items: [], es: null, current: null, pinned: true, timer: null };
+
+  function toast(text) { var t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1500); }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+
+  // 1. token bootstrap: ?k= or #k= once, then localStorage, then scrub the address bar
+  function bootstrapKey() {
+    var m = location.search.match(/[?&]k=([^&]+)/) || location.hash.match(/[#&]k=([^&]+)/);
+    if (m) {
+      state.key = decodeURIComponent(m[1]);
+      store(KEY, state.key);
+      try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    } else {
+      state.key = load(KEY);
+    }
+  }
+  function withAuth(path) { return API + path + (path.indexOf("?") < 0 ? "?" : "&") + "auth=" + encodeURIComponent(state.key); }
+
+  function show(id) { ["keyScreen", "home", "pane"].forEach(function (s) { $(s).hidden = s !== id; }); }
+
+  // 2. home list
+  function renderList() {
+    var box = $("list"); box.innerHTML = "";
+    if (!state.items.length) { box.innerHTML = '<div class="empty">没有条目</div>'; return; }
+    state.items.forEach(function (it) {
+      var row = document.createElement("div"); row.className = "row";
+      var dot = it.alive ? (it.busy ? "dot busy" : "dot on") : "dot";
+      row.innerHTML = '<div><div class="name"><span class="' + dot + '"></span><span></span></div><div class="meta"></div></div><div class="chev">›</div>';
+      row.querySelector(".name span:last-child").textContent = it.name;
+      row.querySelector(".meta").textContent = it.note || (it.alive ? "在线" : "离线");
+      row.addEventListener("click", function () { openPane(it); });
+      box.appendChild(row);
+    });
+  }
+  function refresh() {
+    if (!state.key) { show("keyScreen"); return; }
+    fetch(withAuth("status"), { cache: "no-store" }).then(function (r) {
+      if (r.status === 401) { store(KEY, ""); state.key = ""; show("keyScreen"); throw new Error("401"); }
+      return r.json();
+    }).then(function (data) {
+      state.items = data.items || []; renderList(); show($("pane").hidden ? "home" : "pane");
+    }).catch(function (e) { if (String(e.message) !== "401") toast("读取失败"); });
+  }
+
+  // 3. detail pane with an SSE stream
+  function openPane(it) {
+    state.current = it; state.pinned = true;
+    $("paneName").textContent = it.name;
+    $("paneDot").className = it.alive ? "dot on" : "dot";
+    $("pre").textContent = ""; $("note").hidden = false; $("note").textContent = "正在连上"; $("paneTime").textContent = "";
+    show("pane"); connect();
+  }
+  function connect() {
+    disconnect();
+    if (!state.current) return;
+    var es = new EventSource(withAuth("stream?id=" + encodeURIComponent(state.current.id)));
+    state.es = es;
+    es.addEventListener("snapshot", function (ev) {
+      var s = JSON.parse(ev.data);
+      $("pre").textContent = s.text || "";
+      $("note").hidden = true;
+      $("paneDot").className = s.alive ? "dot on" : "dot";
+      $("paneTime").textContent = new Date((s.captured_at || Date.now() / 1000) * 1000).toLocaleTimeString("zh-CN", { hour12: false });
+      if (state.pinned) { var t = $("term"); t.scrollTop = t.scrollHeight; }
+    });
+    es.addEventListener("error", function (ev) {
+      if (ev.data) { try { $("note").hidden = false; $("note").textContent = JSON.parse(ev.data).error || "出错"; } catch (e) {} }
+    });
+    es.onerror = function () { $("note").hidden = false; $("note").textContent = "连接断了，正在重连"; };
+  }
+  function disconnect() { if (state.es) { state.es.close(); state.es = null; } }
+  function closePane() { disconnect(); state.current = null; show("home"); refresh(); }
+
+  // stick to bottom only while the reader is already at the bottom
+  $("term").addEventListener("scroll", function () {
+    var t = $("term"); state.pinned = t.scrollHeight - t.scrollTop - t.clientHeight < 24;
+  });
+  $("toBottom").addEventListener("click", function () { var t = $("term"); t.scrollTop = t.scrollHeight; state.pinned = true; });
+
+  // font size persisted per browser
+  var size = parseInt(load("mini_app_font") || "12", 10);
+  function applyFont() { $("pre").style.fontSize = size + "px"; store("mini_app_font", String(size)); }
+  $("fontMinus").addEventListener("click", function () { size = Math.max(9, size - 1); applyFont(); });
+  $("fontPlus").addEventListener("click", function () { size = Math.min(18, size + 1); applyFont(); });
+  applyFont();
+
+  // pause the stream when the page is hidden, resume when it comes back
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { disconnect(); clearInterval(state.timer); state.timer = null; }
+    else { if (state.current) connect(); startPolling(); refresh(); }
+  });
+  function startPolling() { clearInterval(state.timer); state.timer = setInterval(function () { if ($("home").hidden === false) refresh(); }, 10000); }
+
+  $("back").addEventListener("click", closePane);
+  $("refresh").addEventListener("click", refresh);
+  $("keySave").addEventListener("click", function () {
+    var v = $("keyInput").value.trim(); if (!v) return;
+    state.key = v; store(KEY, v); $("keyInput").value = ""; refresh();
+  });
+  window.addEventListener("popstate", function () { if (!$("pane").hidden) closePane(); });
+
+  bootstrapKey();
+  startPolling();
+  refresh();
+})();
+</script>
+</body>
+</html>
