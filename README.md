@@ -87,6 +87,21 @@ python3 code/voice_sender.py --app-user user_example --text "到家了记得说�
 
 企微侧的桥接工艺见 [guide/原生语音.md](guide/原生语音.md)。这门手艺的正典独立成仓：**[voice-for-one](https://github.com/RoronoaHaruka/voice-for-one)**（书名《一副声音》），那边有 Telegram 门（OGG OPUS voice note）、网页播放门（TTS 中转、`/play` 链接页、iOS 静音拨片双保险）与场景感语音的工艺配方、台词学问、素材来源指南。
 
+## v1.5.0 · 思考直播：把 Agent 的心里话接进企业微信
+
+正文之外，Agent 每一轮还有大量思考（thinking）。v1.5.0 把它做成一条不打扰正文的直播线：直播进程尾随 Agent 的 JSONL 会话转录读增量，整回合合并后翻译、压成两到四句摘要，用 `textcard` 卡片递进企业微信；整包思考（译文＋原稿折叠）排进一天一页的静态日记页，`latest.html` 永远是最新页，配合 v1.2.0 的底部菜单一按翻开。
+
+```text
+Agent 转录 JSONL ─ 尾随增量 ─> turn-hold 合并回合
+                                   │ 回复出现（selfFlush）
+                                   ├→ 翻译 → 摘要 → textcard 卡片（摘要进聊天）
+                                   └→ 译文＋原稿折叠 → 日记页 /thinking/（整包上网页，菜单直达）
+```
+
+关键账目：`text` 2048 字节、`textcard.description` 512 字节，都按 UTF-8 字节算，装饰字符先扣预算；静态目录必须真的被 Web 服务 mount，否则访客只会拿到一句 `{"detail":"Not Found"}`。
+
+专题教程：[guide/思考直播.md](guide/思考直播.md)
+
 ## 目录
 - 00 · 原理总览：这条路为什么能通
 - 01 · 注册企业微信，拿到CorpID
