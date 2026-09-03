@@ -64,6 +64,19 @@ python -m unittest discover -s tests -v
 专题教程：[Markdown](guide/迷你应用.md) · [HTML](guide/迷你应用.html) · [PDF](guide/迷你应用.pdf)
 参考实现：[`code/mini_app_server.py`](code/mini_app_server.py) · [`code/mini_app_page.html`](code/mini_app_page.html) · [`code/mini_app_setup.sh`](code/mini_app_setup.sh) · 测试 [`tests/test_mini_app.py`](tests/test_mini_app.py)
 
+## v1.3.0 · 受控文件发送：文件出门也走白名单
+
+入站文件在 v1.1.0 已由微信客服桥下载落盘；这一版补上出站的另一半。[`code/file_sender.py`](code/file_sender.py) 把「上传拿 `media_id`、按门发送」封装成一个受控工具：应用门走 `media/upload` → `message/send(msgtype=file)`，客服门走 `kf/send_msg(msgtype=file)`，并占用与文本相同的五格回复预算与去重 `msgid`。
+
+工具不代发任意路径。只有 `WECOM_FILE_ALLOWED_DIRS` 里的常规文件、后缀在 `WECOM_FILE_ALLOWED_SUFFIXES` 内、大小不超过 20MB API 上限才会出门；symlink 在路径解析后按真实位置拦截，收件人沿用应用白名单与客服绑定客户校验。五层防护各有消融项，见 [`tests/ABLATION.md`](tests/ABLATION.md)。
+
+```bash
+# 顺着队列信封原路回一个文件（应用门或客服门自动选）
+python3 code/file_sender.py --envelope /var/lib/wecom-agent/queue/msg_kf_example.json --path /var/lib/wecom-agent/outbox/report.pdf
+# 主动从应用门推一个文件
+python3 code/file_sender.py --app-user user_example --path /var/lib/wecom-agent/outbox/report.pdf
+```
+
 ## 目录
 - 00 · 原理总览：这条路为什么能通
 - 01 · 注册企业微信，拿到CorpID
@@ -252,7 +265,7 @@ media=@example.pdf
 
 “自建应用通常不出现在个人微信的转发目标列表里”和“应用能否主动发送文件”也属于两个接口边界。用户文件需要稳定进入 Agent 时，使用本仓库 v1.1.0 的微信客服入口：[`kf/sync_msg`](https://developer.work.weixin.qq.com/document/path/94670) 明确支持 `file`，下载后再进入同一 Agent 队列；微信客服主动回文件则使用 [`kf/send_msg`](https://developer.work.weixin.qq.com/document/path/94677)。
 
-当前 [`code/sender.py`](code/sender.py) 与 [`code/reply_router.py`](code/reply_router.py) 保持最小文本发送实现，没有封装通用文件工具。若要让 Agent 主动发任意文件，应另加一个受控工具，保留收件人白名单、允许路径、大小上限和 MIME 校验，内部执行上述上传与发送两步。现成适配器缺少这层封装时，会表现为“不能发文件”；这是适配器能力范围，企微发送接口仍然可用。
+出站封装在 [`code/file_sender.py`](code/file_sender.py)（v1.3.0）：先校验允许目录、后缀白名单与 20MB 上限，再执行上述上传与发送两步；应用门沿用 `WECOM_ALLOWED_USER_IDS`，客服门沿用绑定客户校验与五格回复预算。现成适配器缺少这层封装时，会表现为“不能发文件”；这是适配器能力范围，企微发送接口仍然可用。
 
 > **小技巧：名字和头像也走API**
 > 机器人的头像和名字不用进后台改，程序自己就能换：先用 `media/upload`（type=image）把图片传上去拿到media_id，再调 `agent/set` 传 `{"agentid": ..., "logo_mediaid": "..."}` 即可换头像（改名字传 `name` 字段）。企业微信端立即生效；微信插件那头有缓存，头像会晚几分钟才刷过来，等一等或重启微信就好。让机器人自己给自己换头像，是很好用的人格化小魔术。
@@ -318,6 +331,7 @@ python3 code/bot_loop.py
 | 个人微信里收不到，企业微信App能收到 | 最常见：企业微信App在手机上处于登录状态，消息被App抢走，退出登录或卸载App即恢复。其次检查微信插件是否已关注、「允许成员在微信插件中接收和回复聊天消息」是否勾选。 |
 | 长回复发送失败 | 单条超长。按 UTF-8 字节分段；示例以 1800 字节保留余量，避免中文按字符计数后被截断。 |
 | 发图片、语音 | 先调素材上传接口 `media/upload` 拿media_id，再用对应msgtype发送。文本跑稳了再加。注意单文件有大小限制，图片转JPEG压一压更稳。 |
+| 微信里直接给应用发文件，显示「已发送」，服务器却零回调 | 官方回调类型表没有 `file`，这类消息在腾讯侧被静默丢弃：不报错、不重试，发送方看起来一切正常，最能骗人。要把文件送进 Agent，转发给微信客服入口（v1.1.0）；服务器主动发文件用 `code/file_sender.py`（v1.3.0）。 |
 | 后台找不到「微信插件」 | 它只在电脑网页版管理后台里，手机App没有；部分新企业左侧菜单还会藏起它，直接开 `https://work.weixin.qq.com/wework_admin/frame#profile/wxPlugin`。 |
 | 改了应用头像，微信里没变 | 微信插件端有缓存，头像要晚几分钟才刷新，等一等或杀掉微信重开即可；企业微信App端是立即生效的。 |
 | Secret看不到 | 需要装企业微信App收推送，管理后台不直接显示。收完记得退出登录。 |

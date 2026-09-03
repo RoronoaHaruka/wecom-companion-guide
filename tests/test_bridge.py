@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT / "code"))
 import bot_loop
 import callback_server
 import customer_service_bridge
+import file_sender
 import reply_router
 import sender
 
@@ -373,6 +374,172 @@ class BridgeTests(unittest.TestCase):
                         )
             self.assertEqual(sent, 1)
             self.assertEqual(progress, [1])
+            with sqlite3.connect(state_db) as db:
+                remaining = db.execute(
+                    "SELECT remaining FROM reply_budget WHERE route_key=?",
+                    ("wk_example:wm_example",),
+                ).fetchone()
+            self.assertEqual(remaining, (4,))
+
+    def test_file_policy_validates_directory_suffix_and_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            allowed = root / "outbox"
+            allowed.mkdir()
+            policy = file_sender.FilePolicy(
+                allowed_dirs=(allowed.resolve(),),
+                allowed_suffixes=frozenset({".pdf"}),
+                max_bytes=1024,
+            )
+            good = allowed / "report.pdf"
+            good.write_bytes(b"%PDF-1.7 minimal")
+            self.assertEqual(policy.validate(good), good.resolve())
+            outside = root / "escape.pdf"
+            outside.write_bytes(b"%PDF-1.7 minimal")
+            with self.assertRaisesRegex(PermissionError, "WECOM_FILE_ALLOWED_DIRS"):
+                policy.validate(outside)
+            sneaky = allowed / "link.pdf"
+            sneaky.symlink_to(outside)
+            with self.assertRaisesRegex(PermissionError, "WECOM_FILE_ALLOWED_DIRS"):
+                policy.validate(sneaky)
+            wrong = allowed / "notes.exe"
+            wrong.write_bytes(b"MZ minimal")
+            with self.assertRaisesRegex(ValueError, "WECOM_FILE_ALLOWED_SUFFIXES"):
+                policy.validate(wrong)
+            tiny = allowed / "tiny.pdf"
+            tiny.write_bytes(b"12345")
+            with self.assertRaisesRegex(ValueError, "smaller than 6 bytes"):
+                policy.validate(tiny)
+            large = allowed / "large.pdf"
+            large.write_bytes(b"x" * 2048)
+            with self.assertRaisesRegex(ValueError, "WECOM_FILE_MAX_BYTES"):
+                policy.validate(large)
+
+    def test_file_sender_uploads_then_sends_through_the_application_door(self):
+        payload, content_type = file_sender.FileSender.multipart("media", "报告.pdf", b"binary")
+        boundary = content_type.split("boundary=")[1]
+        self.assertIn(f"--{boundary}\r\n".encode("utf-8"), payload)
+        self.assertIn('filename="报告.pdf"'.encode("utf-8"), payload)
+        self.assertIn(b"binary", payload)
+        self.assertTrue(payload.endswith(f"\r\n--{boundary}--\r\n".encode("utf-8")))
+
+        environment = {
+            "WECOM_CORP_ID": "ww_example",
+            "WECOM_APP_SECRET": "secret",
+            "WECOM_AGENT_ID": "1000002",
+            "WECOM_ALLOWED_USER_IDS": "user_example",
+            "WECOM_OPEN_KFID": "wk_example",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            allowed = Path(directory)
+            report = allowed / "report.pdf"
+            report.write_bytes(b"%PDF-1.7 minimal")
+            policy = file_sender.FilePolicy(
+                allowed_dirs=(allowed.resolve(),),
+                allowed_suffixes=frozenset({".pdf"}),
+                max_bytes=1024,
+            )
+            with patch.dict(os.environ, environment, clear=False):
+                router = reply_router.ReplyRouter()
+            tool = file_sender.FileSender(policy, router)
+            calls = []
+
+            def record(method, url, body=None):
+                calls.append((url, body))
+                return {"errcode": 0}
+
+            with patch.object(router.app_sender, "access_token", return_value="token"):
+                with patch.object(tool, "upload", return_value="media-1") as upload:
+                    with patch.object(router.app_sender, "request_json", side_effect=record):
+                        with self.assertRaisesRegex(PermissionError, "allowlisted"):
+                            tool.send_app_file("user_other", report)
+                        media_id = tool.send(
+                            {"reply": {"kind": "app", "user_id": "user_example"}},
+                            report,
+                        )
+            self.assertEqual(media_id, "media-1")
+            upload.assert_called_once()
+            self.assertEqual(len(calls), 1)
+            url, body = calls[0]
+            self.assertIn("/message/send", url)
+            self.assertEqual(body["msgtype"], "file")
+            self.assertEqual(body["file"], {"media_id": "media-1"})
+            self.assertEqual(body["touser"], "user_example")
+
+    def test_file_sender_kf_door_respects_binding_and_budget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state_db = root / "state.sqlite3"
+            config = customer_service_bridge.Config(
+                corp_id="ww_example",
+                app_secret="secret",
+                open_kfid="wk_example",
+                route_agent="agent_default",
+                queue_dir=root / "queue",
+                data_dir=root / "data",
+                state_db=state_db,
+                expected_external_userid="wm_example",
+            )
+            store = customer_service_bridge.Store(config)
+            with store.lock:
+                store.db.execute(
+                    "INSERT INTO kf_bindings(open_kfid,external_userid) VALUES(?,?)",
+                    ("wk_example", "wm_example"),
+                )
+                store.db.execute(
+                    "INSERT INTO reply_budget(route_key,source_msg_id,remaining,updated_at) VALUES(?,?,5,0)",
+                    ("wk_example:wm_example", "source-1"),
+                )
+                store.db.commit()
+            allowed = root / "outbox"
+            allowed.mkdir()
+            report = allowed / "report.pdf"
+            report.write_bytes(b"%PDF-1.7 minimal")
+            policy = file_sender.FilePolicy(
+                allowed_dirs=(allowed.resolve(),),
+                allowed_suffixes=frozenset({".pdf"}),
+                max_bytes=1024,
+            )
+            environment = {
+                "WECOM_CORP_ID": "ww_example",
+                "WECOM_APP_SECRET": "secret",
+                "WECOM_AGENT_ID": "1000002",
+                "WECOM_ALLOWED_USER_IDS": "user_example",
+                "WECOM_OPEN_KFID": "wk_example",
+                "WECOM_STATE_DB": str(state_db),
+            }
+            with patch.dict(os.environ, environment, clear=False):
+                router = reply_router.ReplyRouter()
+            tool = file_sender.FileSender(policy, router)
+            calls = []
+
+            def record(method, url, body=None):
+                calls.append((url, body))
+                return {"errcode": 0}
+
+            with patch.object(router.app_sender, "access_token", return_value="token"):
+                with patch.object(tool, "upload", return_value="media-1"):
+                    with patch.object(router.app_sender, "request_json", side_effect=record):
+                        with self.assertRaisesRegex(PermissionError, "bound customer"):
+                            tool.send_kf_file("wk_example", "wm_other", report)
+                        media_id = tool.send(
+                            {
+                                "msg_id": "source-1",
+                                "reply": {
+                                    "kind": "kf",
+                                    "open_kfid": "wk_example",
+                                    "user_id": "wm_example",
+                                },
+                            },
+                            report,
+                        )
+            self.assertEqual(media_id, "media-1")
+            self.assertEqual(len(calls), 1)
+            url, body = calls[0]
+            self.assertIn("/kf/send_msg", url)
+            self.assertEqual(body["msgtype"], "file")
+            self.assertEqual(body["file"], {"media_id": "media-1"})
+            self.assertTrue(body["msgid"].startswith("f"))
             with sqlite3.connect(state_db) as db:
                 remaining = db.execute(
                     "SELECT remaining FROM reply_budget WHERE route_key=?",

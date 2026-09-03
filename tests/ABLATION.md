@@ -28,7 +28,12 @@ PYTHONPATH=code python tests/test_ablations.py
 | Source-aware reply routing | A customer-service envelope no longer selects `kf/send_msg` |
 | Pending reply persistence | A retry regenerates or loses the reply already produced |
 | Sent-chunk checkpoint | A retry starts before the last confirmed chunk |
+| Outbound file directory allowlist | A file outside `WECOM_FILE_ALLOWED_DIRS` (including a symlink escape) is accepted for upload |
+| Outbound file suffix check | A suffix outside `WECOM_FILE_ALLOWED_SUFFIXES` is accepted for upload |
+| Outbound file size cap | A file above `WECOM_FILE_MAX_BYTES` is accepted for upload |
+| Outbound file recipient allowlist | An unapproved enterprise UserID receives a file through the application door |
+| Outbound file customer binding | A different `external_userid` receives a file through the customer-service door |
 
-Release result on 2026-09-03: **11 of 11 ablations were detected**. The unmodified suite passed after the experiment.
+Release result on 2026-09-03: **16 of 16 ablations were detected**. The unmodified suite passed after the experiment.
 
 Documentation © 2026 Roronoa & Haruka · From Raincove ♡ · [CC BY-NC-SA 4.0](../LICENSE)

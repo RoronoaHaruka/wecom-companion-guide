@@ -93,6 +93,36 @@ ABLATIONS = (
         'envelope["_reply_offset"] = next_index',
         'envelope["_reply_offset"] = 0',
     ),
+    Ablation(
+        "outbound file directory allowlist",
+        "code/file_sender.py",
+        "if not any(resolved.is_relative_to(root) for root in self.allowed_dirs):",
+        "if False:",
+    ),
+    Ablation(
+        "outbound file suffix check",
+        "code/file_sender.py",
+        "if resolved.suffix.lower() not in self.allowed_suffixes:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound file size cap",
+        "code/file_sender.py",
+        "if size > self.max_bytes:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound file recipient allowlist",
+        "code/file_sender.py",
+        "if user_id not in app.config.allowed_user_ids:",
+        "if False:",
+    ),
+    Ablation(
+        "outbound file customer binding",
+        "code/file_sender.py",
+        "if not router.bound_customer(open_kfid, user_id):",
+        "if False:",
+    ),
 )
 
 
